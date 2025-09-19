@@ -1,0 +1,52 @@
+# Pricing Tool Web Docker Image
+# This image contains only the Web application served by nginx
+
+# Build stage
+FROM node:20-alpine AS builder
+
+# Set working directory
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm@10.11.0
+
+# Copy package files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json ./apps/web/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+# Build packages and web app
+RUN pnpm run build --filter=@pricing-tool/web...
+
+# Production stage
+FROM nginx:alpine AS production
+
+# Copy nginx configuration
+COPY docker/nginx/web.conf /etc/nginx/nginx.conf
+
+# Copy built web application
+COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
+
+# Set permissions for nginx directories
+RUN chown -R nginx:nginx /usr/share/nginx/html && \
+    chown -R nginx:nginx /var/cache/nginx && \
+    chown -R nginx:nginx /var/log/nginx && \
+    chown -R nginx:nginx /etc/nginx/conf.d && \
+    chmod 755 /tmp
+
+# Note: Running as root to avoid permission issues with nginx.pid
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:1680/ || exit 1
+
+# Expose port
+EXPOSE 1680
+
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]

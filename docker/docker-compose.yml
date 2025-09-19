@@ -1,0 +1,68 @@
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: pricing-tool-api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - MONGO_URI=mongodb://admin:admin123@mongoDb:27017/pricing-tool?authSource=admin
+    depends_on:
+      - mongoDb
+      - minio
+    networks:
+      - pricing-tool-network
+
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    container_name: pricing-tool-web
+    ports:
+      - "80:80"
+    depends_on:
+      - api
+    networks:
+      - pricing-tool-network
+
+  mongoDb:
+    image: mongo
+    container_name: pricing-tool-mongoDb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: pricing-tool
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - pricing-tool-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: pricing-tool-minio
+    restart: unless-stopped
+    ports:
+      - "29000:9000"
+      - "29001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+      MINIO_REGION: us-east-1
+    volumes:
+      - ./data/minio:/data
+    command: server /data --console-address ":9001"
+    networks:
+      - pricing-tool-network
+
+networks:
+  pricing-tool-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
