@@ -137,7 +137,7 @@ export const environment: IEnvironment = {
     expiresIn: get('JWT_EXPIRES_IN') || '7d',
   },
   mongo: {
-    uri: get('MONGO_CONNECTION') || 'mongodb://admin:admin123@localhost:27017/c-cam?authSource=admin',
+    uri: get('MONGO_CONNECTION') || 'mongodb://admin:admin123@pricing-tool-mongo:27017/pricing-tool?authSource=admin',
     retryWrites: get('MONGO_RETRY_WRITES') === 'true',
     options: {
       maxPoolSize: Number(get('MONGO_MAX_POOL_SIZE')) || 10,

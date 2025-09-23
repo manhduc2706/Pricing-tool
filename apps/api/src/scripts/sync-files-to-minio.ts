@@ -5,7 +5,7 @@ import { FileModel } from "../models/File.model"; // fileName, fileKey, bucket
 import { getMinIOClient } from "../configs/minio.config";
 
 export async function syncDbFilesToMinio() {
-  await mongoose.connect("mongodb://admin:admin123@localhost:27017/c-cam?authSource=admin");
+  await mongoose.connect("mongodb://admin:admin123@pricing-tool-mongo:27017/pricing-tool?authSource=admin");
 
   const client = getMinIOClient();
   const files = await FileModel.find();
