@@ -71,3 +71,17 @@ export interface ItemDetail {
   price: number;
   category: string;
 }
+
+export interface CreateAccount {
+  name: string,
+  email: string,
+  password: string,
+  role: "Admin" | "User"
+}
+
+export interface SignInResponse {
+  // token: string;
+  id: string;
+  name: string;
+  role: string;
+}

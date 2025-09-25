@@ -9,33 +9,26 @@ export const excelApi = async (data: CreateQuotation) => {
     };
 
     const response = await api.post("/quotations/createExcel", requestData, {
-      responseType: "blob",
+      responseType: "blob", // Server trả file Excel dạng Blob
     });
 
-    // Sử dụng File System Access API
-    // Hiện tại chỉ hỗ trợ Chrome/Edge
-    // Người dùng sẽ được chọn nơi lưu file
-    const opts = {
-      types: [
-        {
-          description: "Excel file",
-          accept: {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-              [".xlsx"],
-          },
-        },
-      ],
-    };
+    // Tạo URL cho Blob
+    const url = window.URL.createObjectURL(new Blob([response.data], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    }));
 
-    // Mở dialog để người dùng chọn nơi lưu
-    const fileHandle = await (window as any).showSaveFilePicker({
-      suggestedName: "Báo_giá.xlsx",
-      ...opts,
-    });
+    // Tạo thẻ a để download
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Báo_giá.xlsx"; // Tên file khi tải về
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 
-    const writable = await fileHandle.createWritable();
-    await writable.write(response.data);
-    await writable.close();
+    // Giải phóng bộ nhớ
+    window.URL.revokeObjectURL(url);
+
+    console.log("File downloaded successfully: Báo_giá.xlsx");
   } catch (error) {
     console.error("Error creating excel form:", error);
     throw error;

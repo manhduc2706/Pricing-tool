@@ -60,7 +60,9 @@ export class QuotationService {
 
     // Lấy đường dẫn tuyệt đối đến ảnh
 
-    const logoPath = path.join(process.cwd(), "src", "images", "LogoCMC.png");
+    const logoPath = process.env.NODE_ENV === "production" ? path.join(process.cwd(), "dist", "images", "LogoCMC.png") // Docker
+      : path.join(process.cwd(), "src", "images", "LogoCMC.png"); // Local dev
+    console.log(logoPath)
     // Đọc file ảnh và thêm vào workbook
     const logoImage = workbook.addImage({
       filename: logoPath,
@@ -386,8 +388,8 @@ export class QuotationService {
     // ============================
 
     async function getFileBuffer(fileKey: string): Promise<Buffer> {
-      const filePath = path.join(process.cwd(), "src", "images", fileKey);
-
+      const filePath = process.env.NODE_ENV === "production" ? path.join(process.cwd(), "dist", "images", fileKey) // Docker
+        : path.join(process.cwd(), "src", "images", fileKey); // Local dev
       try {
         const buffer = await fs.readFile(filePath);
         return buffer;

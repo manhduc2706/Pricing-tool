@@ -42,6 +42,9 @@ RUN pnpm install --frozen-lockfile --prod
 # Copy built API
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
+# Copy images folder vào image
+COPY --from=builder /app/apps/api/src/images ./apps/api/dist/images
+
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001

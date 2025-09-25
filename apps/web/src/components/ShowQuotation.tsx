@@ -25,33 +25,27 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
     // Thêm dòng hardcode theo điều kiện
     ...(quotation.deploymentType === "Cloud"
       ? [
-          {
-            name: "(Miễn phí) Phí bảo trì và nâng cấp hàng năm",
-            description: `- Bảo trì hệ thống phần mềm: cập nhật các bản vá lỗi, nâng cấp các phiên bản về firmware mới nếu có để đảm bảo hệ thống hoạt động ổn định.\n 
-            - Hỗ trợ kỹ thuật từ xa trong các trường hợp xảy ra các vấn đề về vận hành hoặc kỹ thuật của hệ thống.\n
-            - Hỗ trợ đào tạo, hướng dẫn lại việc sử dụng phần mềm cho nhân sự mới tiếp nhận hệ thống của phía khách hàng.\n
-            - Hỗ trợ backup hoặc khôi phục dữ liệu nếu có yêu cầu.`,
-            quantity: 1,
-            unitPrice: "",
-            totalAmount: "",
-            sourceType: "custom-cloud",
-          },
-        ]
+        {
+          name: "(Miễn phí) Phí bảo trì và nâng cấp hàng năm",
+          description: `- Bảo trì hệ thống phần mềm: cập nhật các bản vá lỗi, nâng cấp các phiên bản về firmware mới nếu có để đảm bảo hệ thống hoạt động ổn định.\n- Hỗ trợ kỹ thuật từ xa trong các trường hợp xảy ra các vấn đề về vận hành hoặc kỹ thuật của hệ thống.\n- Hỗ trợ đào tạo, hướng dẫn lại việc sử dụng phần mềm cho nhân sự mới tiếp nhận hệ thống của phía khách hàng.\n- Hỗ trợ backup hoặc khôi phục dữ liệu nếu có yêu cầu.`,
+          quantity: 1,
+          unitPrice: "",
+          totalAmount: "",
+          sourceType: "custom-cloud",
+        },
+      ]
       : quotation.deploymentType === "OnPremise"
-      ? [
+        ? [
           {
             name: "(Tùy chọn) Phí bảo trì và nâng cấp hằng năm (tính từ năm thứ 2)",
-            description: `- Bảo trì hệ thống phần mềm: cập nhật các bản vá lỗi, nâng cấp các phiên bản về firmware mới nếu có để đảm bảo hệ thống hoạt động ổn định.\n 
-            - Hỗ trợ kỹ thuật từ xa trong các trường hợp xảy ra các vấn đề về vận hành hoặc kỹ thuật của hệ thống.\n
-            - Hỗ trợ đào tạo, hướng dẫn lại việc sử dụng phần mềm cho nhân sự mới tiếp nhận hệ thống của phía khách hàng.\n
-            - Hỗ trợ backup hoặc khôi phục dữ liệu nếu có yêu cầu.`,
+            description: `- Bảo trì hệ thống phần mềm: cập nhật các bản vá lỗi, nâng cấp các phiên bản về firmware mới nếu có để đảm bảo hệ thống hoạt động ổn định.\n- Hỗ trợ kỹ thuật từ xa trong các trường hợp xảy ra các vấn đề về vận hành hoặc kỹ thuật của hệ thống.\n- Hỗ trợ đào tạo, hướng dẫn lại việc sử dụng phần mềm cho nhân sự mới tiếp nhận hệ thống của phía khách hàng.\n- Hỗ trợ backup hoặc khôi phục dữ liệu nếu có yêu cầu.`,
             quantity: 1,
             unitPrice: (totalLicenseAmount * 20) / 100,
             totalAmount: (totalLicenseAmount * 20) / 100,
             sourceType: "custom-onprem",
           },
         ]
-      : []),
+        : []),
   ];
 
   return (
@@ -95,8 +89,8 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
                 <td className={`px-3 py-6 ${borderClass}`}>
                   {item.unitPrice !== ""
                     ? (
-                        Number(item.unitPrice) * Number(item.quantity)
-                      ).toLocaleString("vi-VN")
+                      Number(item.unitPrice) * Number(item.quantity)
+                    ).toLocaleString("vi-VN")
                     : ""}{" "}
                 </td>
                 <td className={`px-3 py-6 text-left ${borderClass}`}>

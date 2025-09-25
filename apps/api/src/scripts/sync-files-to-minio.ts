@@ -5,7 +5,13 @@ import { FileModel } from "../models/File.model"; // fileName, fileKey, bucket
 import { getMinIOClient } from "../configs/minio.config";
 
 export async function syncDbFilesToMinio() {
-  await mongoose.connect("mongodb://admin:admin123@pricing-tool-mongo:27017/pricing-tool?authSource=admin");
+  const mongoUri =
+    process.env.MONGO_CONNECTION ||
+    "mongodb://admin:admin123@localhost:27017/pricing-tool?authSource=admin";
+
+  console.log("Mongo URI:", mongoUri);
+
+  await mongoose.connect(mongoUri);
 
   const client = getMinIOClient();
   const files = await FileModel.find();
@@ -14,8 +20,8 @@ export async function syncDbFilesToMinio() {
     const { fileName, fileKey, bucket } = file;
 
     //Đường dẫn ảnh ở local
-    const localPath = path.join(process.cwd(), "src", "images", fileName);
-
+    const localPath = process.env.NODE_ENV === "production" ? path.join(process.cwd(), "dist", "images", fileName) // Docker
+      : path.join(process.cwd(), "src", "images", fileName); // Local dev
     if (!fs.existsSync(localPath)) {
       console.warn(`File not found locally: ${localPath}`);
       continue;
