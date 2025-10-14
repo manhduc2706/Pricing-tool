@@ -5,7 +5,7 @@ import {
   CloudUserLimit,
   AdminSelectedFeature,
 } from "../models/License.model";
-import { IItemDetail, ItemDetail } from "../models/ItemDetail";
+import { ItemDetail } from "../models/ItemDetail";
 import { CostServerModel } from "../models/CostServer.model";
 
 export interface CreateLicenseData {

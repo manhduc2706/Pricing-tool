@@ -12,6 +12,18 @@ import IconD from "../components/ui/iconD";
 import IconCalculator from "../components/ui/iconCalculator";
 import CameraCountInput from "../components/CameraCount";
 import { DownloadExcelButton } from "../components/DownloadExcel";
+import z from "zod";
+import { WarningBox } from "../components/ui/WarningBox";
+import SiteInput from "../components/SiteInput";
+import SiteLocationCheckbox from "../components/SiteLocationCheckbox";
+
+// Schema validate form
+const schema = z.object({
+  userCount: z.number().min(1, "Số lượng user phải > 0").nullable(),
+  pointCount: z.number().min(1, "Số lượng vị trí phải > 0").nullable(),
+  cameraCount: z.number().min(1, "Số lượng camera phải > 0").nullable(),
+  selectedFeatures: z.array(z.string()).min(1, "Bạn phải chọn ít nhất một dịch vụ"),
+});
 
 export default function Home() {
   const [serviceOptions, setServiceOptions] = useState<ServiceOption[]>([]);
@@ -21,6 +33,8 @@ export default function Home() {
   const [infrastructure, setInfrastructure] = useState<
     "Cloud" | "OnPremise" | null
   >(null);
+  const [siteCount, setSiteCount] = useState<number | null>(null);
+  const [siteOption, setSiteOption] = useState<"TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null>(null)
   const [userCount, setUserCount] = useState<number | null>(null);
   const [pointCount, setPointCount] = useState<number | null>(null);
   const [cameraCount, setCameraCount] = useState<number | null>(null);
@@ -29,6 +43,15 @@ export default function Home() {
   const [selectedFeatures, setSelectedFeatures] = useState<SelectedFeature[]>(
     []
   );
+  // Thêm state cho thông báo chung
+  const [formMessage, setFormMessage] = useState<string>("");
+  const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
+  const [showErrors, setShowErrors] = useState(false); // kiểm soát hiển thị
+  const [quotationCreated, setQuotationCreated] = useState(false);
+  const [successChecked, setSuccessChecked] = useState(false);
+  const [progress, setProgress] = useState(100); // phần trăm thanh chạy
+
+
 
   useEffect(() => {
     const fetchServiceOptions = async () => {
@@ -47,6 +70,16 @@ export default function Home() {
     fetchServiceOptions();
   }, []);
 
+  const userCountSchema = z.number().min(1, "Số lượng user phải > 0").nullable();
+  const pointCountSchema = z.number().min(1, "Số lượng vị trí phải > 0").nullable();
+  const cameraCountSchema = z.number().min(1, "Số lượng camera phải > 0").nullable();
+  const selectedFeaturesSchema = z.array(z.string()).min(1, "Bạn phải chọn ít nhất một dịch vụ");
+  const siteCountSchema = z.number().min(1, "Số site phải > 0").nullable();
+
+  const handleSiteOptionChange = (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác") => {
+    setSiteOption(selected);
+  }
+
   const handleInfrastructureChange = (selected: "Cloud" | "OnPremise") => {
     setInfrastructure(selected);
     // setSelectedService(null); // Reset dịch vụ khi thay đổi hạ tầng
@@ -60,6 +93,30 @@ export default function Home() {
     (option) => option._id === selectedService
   );
   const iconKey = selectedOption?.iconKey;
+
+  //Bảng thông báo tạo báo giá thành công
+  const showToast = () => {
+    setSuccessChecked(true);
+    setProgress(100);
+  };
+
+  useEffect(() => {
+    if (successChecked) {
+      // giảm dần progress trong 3s
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev <= 0) {
+            clearInterval(interval);
+            setSuccessChecked(false); // ẩn khi hết
+            return 0;
+          }
+          return prev - 2; // tốc độ giảm (100/50 = 2, mỗi 60ms => ~3s)
+        });
+      }, 60);
+
+      return () => clearInterval(interval);
+    }
+  }, [successChecked]);
 
   const handleCreateQuotation = async () => {
     if (!infrastructure || !selectedService) {
@@ -101,7 +158,7 @@ export default function Home() {
         return;
       }
       if (pointCount === null) {
-        alert("Vui lòng điền số lượng vị trí lắp đặt.");
+        alert("Vui lòng điền số vị trí lắp đặt.");
         return;
       }
     }
@@ -110,6 +167,8 @@ export default function Home() {
       const quotationData = {
         deploymentType: infrastructure,
         _id: selectedService,
+        siteCount: siteCount,
+        siteLocation: siteOption,
         userCount:
           selectedOption?.iconKey === "securityAlert" ? null : userCount,
         pointCount: totalPointCount, // Sử dụng totalPointCount thay vì pointCount
@@ -124,12 +183,12 @@ export default function Home() {
         ...quotationData,
         pointCount: totalPointCount!,
       });
-      // const resultExcel = await excelApi({
-      //   ...quotationData,
-      //   pointCount: totalPointCount!,
-      // });
       setExcelResult(quotationData);
       setQuotationResult(result);
+      // Ẩn lỗi sau khi submit
+      setQuotationCreated(true);
+      setShowErrors(false);
+      showToast();
     } catch (error) {
       console.error("Error creating quotation:", error);
       alert("Lỗi khi tạo báo giá. Vui lòng thử lại.");
@@ -156,27 +215,48 @@ export default function Home() {
     );
   }
 
-  const renderFeatureOptions = () => {
-    const featureOptions = [
-      "Cháy, khói",
-      "Nhận diện người lạ",
-      "Nhận diện hành vi",
-      "Đếm người hoặc vật thể",
-      "Xâm nhập vùng cấm",
-      "Đọc biển số xe",
-    ]; // Fix cứng các lựa chọn tính năng
+  // Gom state values
+  const values = { siteCount, siteOption, userCount, pointCount, cameraCount, selectedFeatures };
 
-    return (
-      <FeatureInput
-        features={featureOptions}
-        onValueChange={(features) => {
-          if (features !== null) {
-            setSelectedFeatures(features);
-            // Không cần setPointCount ở đây vì sẽ tính tổng trong handleCreateQuotation
-          }
-        }}
-      />
-    );
+  const fieldLabels: Record<keyof typeof values, string> = {
+    siteCount: "Số lượng site",
+    siteOption: "Địa điểm triển khai",
+    userCount: "Số lượng user",
+    pointCount: "Số lượng vị trí",
+    cameraCount: "Số lượng camera",
+    selectedFeatures: "Giá trị trong tính năng",
+  };
+
+  const handleValueChange = (
+    name: keyof typeof values,
+    newValue: any,
+    error: string | null
+  ) => {
+    if (name === "userCount") setUserCount(newValue);
+    if (name === "pointCount") setPointCount(newValue);
+    if (name === "cameraCount") setCameraCount(newValue);
+    if (name === "selectedFeatures") setSelectedFeatures(newValue);
+    if (name === "siteCount") setSiteCount(newValue);
+    if (name === "siteOption") setSiteOption(newValue);
+
+    // Nếu có error, hiển thị ưu tiên
+    if (error) {
+      setFormMessage(error);
+      return;
+    }
+
+    setFormMessage(`${fieldLabels[name]} đã thay đổi. Vui lòng tạo mới báo giá.`);
+
+    // Validate tổng thể form (chỉ áp dụng cho các field numeric)
+    if (name !== "selectedFeatures") {
+      const result = schema.safeParse({ ...values, [name]: newValue });
+      if (!result.success) {
+        setFormMessage(`Lỗi: ${result.error.issues[0].message}`);
+      }
+    }
+
+    setErrors(prev => ({ ...prev, [name]: error }));
+    setShowErrors(true);
   };
 
   return (
@@ -199,20 +279,43 @@ export default function Home() {
 
           {/* Các bước cấu hình */}
           <div className="mb-8">
-            {/* Hạ tầng */}
-            <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mb-4">
-              1. Hạ tầng triển khai
-            </h2>
-            <InfrastructureSelector
-              selectedInfrastructure={infrastructure}
-              onChange={handleInfrastructureChange}
-            />
+
+            <>
+              {/* Số site triển khai */}
+              <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mb-4">
+                1. Số điểm triển khai
+              </h2>
+              <SiteInput
+                schema={siteCountSchema}
+                onValueChange={(val, error) => handleValueChange("siteCount", val, error)} />
+            </>
+
+            <>
+              {/* Địa điểm triển khai */}
+              <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
+                2. Địa điểm triển khai
+              </h2>
+              <SiteLocationCheckbox
+                selectedSiteLocation={siteOption}
+                onChange={handleSiteOptionChange} />
+            </>
+
+            <>
+              {/* Hạ tầng triển khai */}
+              <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
+                3. Hạ tầng triển khai
+              </h2>
+              <InfrastructureSelector
+                selectedInfrastructure={infrastructure}
+                onChange={handleInfrastructureChange}
+              />
+            </>
 
             {/* Dịch vụ */}
             {infrastructure && (
               <>
                 <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
-                  2. Chọn nhu cầu dịch vụ
+                  4. Chọn nhu cầu dịch vụ
                 </h2>
                 <p className="block font-medium text-gray-700 mb-4">
                   Chọn dịch vụ cần triển khai:
@@ -236,26 +339,29 @@ export default function Home() {
                 {iconKey !== "securityAlert" && (
                   <>
                     <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
-                      3. Số lượng người dùng
+                      5. Số lượng người dùng
                     </h2>
                     <UserInput
                       infrastructure={infrastructure}
                       fixedUserLimits={
                         infrastructure === "OnPremise"
                           ? [
-                              100,
-                              200,
-                              500,
-                              1000,
-                              1500,
-                              2000,
-                              3000,
-                              5000,
-                              ">5000",
-                            ]
-                          : null
+                            100,
+                            200,
+                            500,
+                            1000,
+                            1500,
+                            2000,
+                            3000,
+                            5000,
+                            ">5000",
+                          ]
+                          : infrastructure === "Cloud" ? [
+                            300, 500, 1000, 1500, 2000, ">2000"
+                          ] : null
                       }
-                      onValueChange={setUserCount}
+                      schema={userCountSchema}
+                      onValueChange={(val, error) => handleValueChange("userCount", val, error)}
                     />
                   </>
                 )}
@@ -264,27 +370,33 @@ export default function Home() {
                   <>
                     <div>
                       <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
-                        3. Chọn tính năng
+                        5. Chọn tính năng
                       </h2>
                       <div className="flex flex-row">
-                        {renderFeatureOptions()}
+                        <FeatureInput
+                          onValueChange={(val, error) => handleValueChange("selectedFeatures", val, error.length > 0 ? error[0] : null)}
+                        />
                       </div>
                     </div>
                     <div>
                       <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
-                        4. Chọn số lượng
+                        6. Chọn số lượng camera
                       </h2>
                       <div className="flex flex-row">
-                        <CameraCountInput onValueChange={setCameraCount} />
+                        <CameraCountInput
+                          // schema={cameraCountSchema}
+                          onValueChange={(val, error) => handleValueChange("cameraCount", val, error)} />
                       </div>
                     </div>
                   </>
                 ) : (
                   <>
                     <h2 className="text-lg font-semibold text-gray-900 mb-6 border-b pb-2 mt-6 mb-4">
-                      4. Số lượng vị trí lắp đặt
+                      6. Số vị trí lắp đặt
                     </h2>
-                    <LocationInput onValueChange={setPointCount} />
+                    <LocationInput
+                      schema={pointCountSchema}
+                      onValueChange={(val, error) => handleValueChange("pointCount", val, error)} />
                   </>
                 )}
               </>
@@ -302,6 +414,58 @@ export default function Home() {
             </button>
           </div>
         </div>
+
+        {successChecked && (
+          <div className="fixed bottom-5 right-5 flex items-end px-4 py-6">
+            <div className="w-120 shadow-lg rounded bg-green-400 border-l-4 border-green-700 text-white relative">
+              <div className="p-3">
+                <div className="flex items-start">
+                  <div className="ml-2 flex-1 pt-0.5">
+                    <p className="text-sm leading-5 font-medium">Tạo báo giá thành công!</p>
+                  </div>
+                  <div className="ml-3 flex-shrink-0 flex">
+                    <button
+                      className="inline-flex text-white transition ease-in-out duration-150"
+                      onClick={() => setSuccessChecked(false)} // React style
+                    >
+                      <svg
+                        className="h-5 w-5"
+                        viewBox="0 0 20 20"
+                        fill="currentColor"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 
+                     1.414L11.414 10l4.293 4.293a1 1 0 
+                     01-1.414 1.414L10 11.414l-4.293 
+                     4.293a1 1 0 01-1.414-1.414L8.586 
+                     10 4.293 5.707a1 1 0 010-1.414z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Thanh progress */}
+              <div className="h-1 bg-green-300">
+                <div
+                  className="h-1 bg-green-700 transition-all duration-100"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+
+        {quotationCreated && showErrors && formMessage && (
+          <WarningBox>
+            <span>{formMessage}</span>
+          </WarningBox>
+        )}
+
 
         {/* Ô hiển thị báo giá */}
         {quotationResult && (

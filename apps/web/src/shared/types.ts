@@ -18,6 +18,8 @@ export interface CreateQuotation {
   userCount: number | null;
   pointCount: number;
   cameraCount: number | null;
+  siteCount: number | null;
+  siteLocation: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null;
   selectedFeatures?: SelectedFeature[];
   iconKey?: string;
 }
@@ -29,22 +31,31 @@ export interface SelectedFeature {
 
 export interface ShowQuotationProps {
   quotation: {
+    _id: string,
     iconKey: string;
     pointCount: number | null;
     cameraCount: number | null;
     deploymentType: "Cloud" | "OnPremise";
+    materialCosts: number | string,
+    softwareInstallationCost: number,
+    trainingCost: number,
+    screenOptions: IDevice[];
     devices: Array<{
+      _id: string;
       name: string;
       itemType: string;
       vatRate: number;
+      deviceType: string;
       selectedFeatures?: SelectedFeature[];
       quantity: number;
       pointCount: number;
       description: string;
       unitPrice: number;
       totalAmount: number;
+      itemDetailId: string;
     }>;
     licenses: Array<{
+      _id: string;
       name: string;
       itemType: string;
       vatRate: number;
@@ -55,8 +66,10 @@ export interface ShowQuotationProps {
       unitPrice: number;
       costServer: number;
       totalAmount: number;
+      itemDetailId: string;
     }>;
     costServers: Array<{
+      _id: string;
       name: string;
       vatRate: number;
       selectedFeatures?: SelectedFeature[];
@@ -69,10 +82,33 @@ export interface ShowQuotationProps {
       deviceTotal: number;
       licenseTotal: number;
       costServerTotal: number;
-      deploymentCost: number;
-      grandTotal: number;
+      deploymentCost: number | string;
+      grandTotal: number | string;
     };
   };
+}
+
+export interface IDevice {
+  _id: string;
+  categoryId: string;
+  deviceType: string;
+  itemDetailId: IItemDetail;
+  selectedFeatures?: SelectedFeature[];
+  totalAmount: number;
+}
+
+export interface IItemDetail {
+  _id: string;
+  developmentType: "Cloud" | "OnPremise"; //Loại môi trường áp dụng
+  name: string; //Tên sản phẩm
+  vendor: string; //Nhà sản xuất
+  origin: string; //Xuất xứ
+  unitPrice: number; //Giá bán lẻ
+  vatRate: number; //Thuế suất
+  description: string; //Thông số kỹ thuật
+  note?: string; //Ghi chú
+  quantity: number; //Số lượng mua
+  fileId?: string;
 }
 
 // Additional shared types for frontend
@@ -89,13 +125,13 @@ export interface QuotationRequest {
 }
 
 export interface Category {
-  id: string;
+  _id: string;
   name: string;
   description?: string;
 }
 
 export interface Device {
-  id: string;
+  _id: string;
   name: string;
   category: string;
   price: number;
@@ -103,7 +139,7 @@ export interface Device {
 }
 
 export interface License {
-  id: string;
+  _id: string;
   name: string;
   type: string;
   price: number;

@@ -1,13 +1,21 @@
 import { QuotationRepository } from '../repositories/Quotation.repository';
 import ExcelJS from 'exceljs';
-import { CreateQuotationData, OutPutQuotationData } from '../types/quotation';
+import { CostServerResponse, CreateQuotationData, OutPutQuotationData, QuotationItemResponse } from '../types/quotation';
 import path from 'path';
 import { FileModel } from '../models/File.model';
 import * as fs from "fs/promises";
 import { getMinIOClient } from '../configs/minio.config';
+import { promises } from 'dns';
+import { Types } from 'mongoose';
+import { OutputQuotationModel } from '../models/QuotationOutPut.model';
+import { QuotationModel } from '../models/Quotation.model';
 
 export class QuotationService {
   private quotationRepository: QuotationRepository;
+
+  private num(v: any) {
+    return typeof v === "number" && !Number.isNaN(v) ? v : Number(v) || 0;
+  }
 
   constructor() {
     this.quotationRepository = new QuotationRepository();
@@ -18,39 +26,430 @@ export class QuotationService {
    * @param data - Dữ liệu từ FE bao gồm deploymentType, categoryId, userCount, pointCount.
    * @returns Báo giá đã được tạo.
    */
-  async createQuotation(
-    data: CreateQuotationData
-  ): Promise<OutPutQuotationData> {
-    // Validate input
-    if (!data.categoryId || !data.pointCount || !data.deploymentType) {
-      throw new Error('Thiếu thông tin bắt buộc để tạo báo giá');
-    }
+  private async prepareQuotationData(data: CreateQuotationData) {
+    const isSecurity = data.iconKey === "securityAlert";
+    if (!data.pointCount) throw new Error("Số điểm triển khai là bắt buộc");
 
-    if (data.pointCount <= 0) {
-      throw new Error('Số lượng vị trí phải lớn hơn 0');
+    if (!isSecurity && (data.userCount == null || Number.isNaN(data.userCount))) {
+      throw new Error("Số lượng user là bắt buộc (trừ dịch vụ securityAlert)");
     }
+    const num = this.num;
 
-    // Chỉ validate userCount khi không phải securityAlert
-    if (data.iconKey !== 'securityAlert') {
-      if (!data.userCount || data.userCount <= 0) {
-        throw new Error('Số lượng user phải lớn hơn 0');
-      }
-    }
+    console.log("Data nhận được trong prepareQuotationData:", data);
 
-    // Validate selectedFeatures cho securityAlert
-    if (data.iconKey === 'securityAlert') {
-      if (!data.selectedFeatures || data.selectedFeatures.length === 0) {
-        throw new Error(
-          'Vui lòng chọn ít nhất một tính năng cho cảnh báo an ninh'
-        );
-      }
-    }
 
-    return await this.quotationRepository.create(data);
+    const itemDetails = await this.quotationRepository.findItemDetailsByDeploymentType(data.deploymentType);
+    const itemDetailIds = itemDetails.map((i) => i._id.toString());
+
+    const allDevices = await this.quotationRepository.findDevicesByCategory(data.categoryId.toString(), itemDetailIds);
+    const screenDevices = allDevices.filter((d) => d.deviceType === "Màn hình");
+    const firstScreenDevice = screenDevices.length > 0 ? screenDevices[0] : null;
+    const otherDevices = allDevices.filter((d) => d.deviceType !== "Màn hình");
+    const devices = firstScreenDevice ? [firstScreenDevice, ...otherDevices] : otherDevices;
+
+    const licenses = await this.getLicenses(data, isSecurity, itemDetailIds);
+    const costServerIds = licenses.map((l: any) => l.costServerId).filter((id: any) => id);
+    const costServers = await this.quotationRepository.findCostServersByIds(costServerIds);
+    const costServer = costServers[0];
+
+    return { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer, num };
   }
 
+  async createQuotation(data: CreateQuotationData): Promise<OutPutQuotationData> {
+    try {
+      const num = this.num;
+
+      // 1) Lấy dữ liệu
+      const { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
+
+      // 2) Gọi tính toán
+      const totals = this.calculateTotals(data, devices, licenses, costServer, isSecurity);
+
+      // 3) Trả dữ liệu chuẩn FE
+      const deviceResponses: QuotationItemResponse[] = devices.map(
+        (device: any) => {
+          const quantity =
+            data.iconKey === "securityAlert"
+              ? device.deviceType === "AI Box"
+                ? Math.floor(num(data.cameraCount) / 2) +
+                (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+                : num(data.cameraCount) // Nếu không, dùng cameraCount
+              : num(data.pointCount); // Nếu không phải securityAlert, dùng pointCount
+
+          return {
+            itemDetailId: device.itemDetailId._id,
+            fileId: device.itemDetailId.fileId,
+            name: device.itemDetailId?.name,
+            deviceType: device.deviceType,
+            selectedFeatures: device.selectedFeatures ?? [],
+            vendor: device.itemDetailId.vendor,
+            origin: device.itemDetailId.origin,
+            unitPrice: num(device.itemDetailId?.unitPrice),
+            quantity,
+            priceRate: num(
+              (device.itemDetailId?.unitPrice *
+                device.itemDetailId?.vatRate *
+                quantity) /
+              100
+            ),
+            vatRate: num(device.itemDetailId?.vatRate),
+            cameraCount: data.cameraCount,
+            totalAmount: num(device.totalAmount),
+            category: device.categoryId?.name,
+            description: device.itemDetailId?.description,
+            note: device.itemDetailId?.note,
+          };
+        }
+      );
+
+      const licenseResponses: QuotationItemResponse[] = licenses.map((licenses: any) => {
+        const matchedFeature = data.selectedFeatures?.find((sf) =>
+          licenses.selectedFeatures?.some((dsf: any) => dsf.feature === sf.feature)
+        );
+        const quantity = num(matchedFeature ? matchedFeature.pointCount : 1);
+
+        return {
+          itemDetailId: licenses.itemDetailId?._id ?? new Types.ObjectId(),
+          name: licenses.itemDetailId?.name ?? "N/A",
+          selectedFeatures: licenses.selectedFeatures ?? [],
+          unitPrice: num(licenses.itemDetailId?.unitPrice),
+          pointCount: matchedFeature ? matchedFeature.pointCount : 1,
+          vendor: licenses.itemDetailId?.vendor ?? "",
+          origin: licenses.itemDetailId?.origin ?? "",
+          fileId: licenses.itemDetailId?.fileId ?? null,
+          quantity,
+          priceRate:
+            data.deploymentType === "Cloud"
+              ? num(
+                (licenses.itemDetailId?.unitPrice *
+                  licenses.itemDetailId?.vatRate *
+                  quantity) / 100
+              )
+              : null,
+          vatRate: num(licenses.itemDetailId?.vatRate),
+          totalAmount: num(licenses.totalAmount),
+          category: licenses.categoryId?.name ?? "",
+          description: licenses.itemDetailId?.description ?? "",
+          note: licenses.itemDetailId?.note ?? "",
+        };
+      });
+
+      const costServerResponses: CostServerResponse[] = costServers.map(
+        (costServer: any) => {
+          // Lấy tổng quantity từ licenseResponses
+          const totalLicenseQuantity = licenseResponses.reduce(
+            (acc, license) => acc + num(license.quantity),
+            0
+          );
+          const quantity =
+            data.iconKey === "securityAlert" ? 1 : totalLicenseQuantity;
+
+          return {
+            fileId: costServer.fileId,
+            name: costServer.name,
+            unitPrice: num(costServer.unitPrice),
+            quantity,
+            priceRate:
+              data.deploymentType === "OnPremise"
+                ? num(
+                  (costServer.unitPrice * costServer.vatRate * quantity) / 100
+                )
+                : null,
+            vatRate: num(costServer.vatRate),
+            // Nếu iconKey là "securityAlert", quantity = 1, ngược lại dùng totalLicenseQuantity
+            totalAmount: num(costServer.totalAmount) * quantity,
+            description: costServer.description,
+            note: costServer.itemDetailId?.note,
+          };
+        }
+      );
+
+      const quotation = await QuotationModel.create(data);
+
+      const newOutPutQuotation = new OutputQuotationModel({
+        quotationId: quotation._id,
+        deploymentType: data.deploymentType,
+        iconKey: data.iconKey,
+        userCount: data.userCount ?? null,
+        pointCount: data.pointCount ?? null,
+        cameraCount: data.cameraCount ?? null,
+        selectedFeatures: data.selectedFeatures ?? [],
+        screenOptions: screenDevices,
+        devices: deviceResponses,
+        licenses: licenseResponses,
+        costServers: costServerResponses,
+        ...totals, // merge toàn bộ kết quả từ calculateTotals
+      });
+
+      return await newOutPutQuotation.save();
+    } catch (error) {
+      console.error("Lỗi trong createQuotation:", error);
+      if (error instanceof Error) {
+        throw new Error(error.message || "Lỗi không xác định trong createQuotation");
+      } else {
+        throw new Error("Lỗi không xác định trong createQuotation");
+      }
+    }
+  }
+
+
+  //Lọc license theo điều kiện
+  private async getLicenses(data: CreateQuotationData, isSecurity: boolean, itemDetailIds: string[]) {
+    const query: any = {
+      categoryId: data.categoryId,
+      itemDetailId: { $in: itemDetailIds },
+    };
+
+    if (data.deploymentType === "Cloud") {
+      if (isSecurity && data.selectedFeatures) {
+        query["selectedFeatures.feature"] = { $in: data.selectedFeatures.map((sf) => sf.feature) };
+      } else {
+        query.userLimit = data.userCount;
+      }
+    } else {
+      if (isSecurity && data.selectedFeatures) {
+        query["selectedFeatures.feature"] = { $in: data.selectedFeatures.map((sf) => sf.feature) };
+      } else {
+        query.userLimit = data.userCount;
+      }
+    }
+
+    return this.quotationRepository.findLicensesByQuery(query);
+  }
+
+  private calculateTotals(
+    data: CreateQuotationData,
+    devices: any[],
+    licenses: any[],
+    costServer: any,
+    isSecurity: boolean
+  ) {
+    const num = this.num;
+
+    // --- Chi phí cố định ---
+    const materialCosts =
+      data.siteLocation === "Tỉnh khác" && data.siteCount > 1
+        ? "AM tính chi phí"
+        : 5000000;
+    const softwareInstallationCost = 5000000;
+    const trainingCost = 5000000;
+
+    // --- Bắt đầu tính tổng ---
+    let licenseTotal = 0;
+    let deviceTotal = 0;
+
+    if (data.deploymentType === "Cloud") {
+      // --- Cloud ---
+      if (isSecurity && data.selectedFeatures) {
+        // Cloud + securityAlert
+        const cameraCount = data.cameraCount;
+        if (cameraCount == null) {
+          throw new Error("cameraCount không được để trống khi chọn Cloud");
+        }
+
+        deviceTotal = devices.reduce((acc: number, device: any) => {
+          const quantity =
+            data.iconKey === "securityAlert"
+              ? device.deviceType === "AI Box"
+                ? Math.floor(num(data.cameraCount) / 2) +
+                (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+                : num(data.cameraCount)
+              : num(data.pointCount);
+          return acc + num(device.totalAmount) * num(quantity);
+        }, 0);
+
+        data.selectedFeatures.forEach((sf) => {
+          const matchingLicenses = licenses.filter(
+            (l: any) =>
+              l.selectedFeatures &&
+              l.selectedFeatures.some((lsf: any) => lsf.feature === sf.feature)
+          );
+
+          matchingLicenses.forEach((license: any) => {
+            const id = license.itemDetailId || {};
+            const base =
+              num(id.unitPrice) +
+              num(costServer?.unitPrice ?? 0) * (1 + num(id.vatRate / 100));
+            licenseTotal += base * sf.pointCount;
+          });
+        });
+      } else {
+        // Cloud thường
+        if (data.userCount == null) {
+          throw new Error("userCount không được để trống khi chọn Cloud");
+        }
+        const pointCount = data.pointCount;
+        if (pointCount == null) {
+          throw new Error("pointCount không được để trống khi chọn Cloud");
+        }
+
+        deviceTotal = devices.reduce(
+          (acc: number, d: any) => acc + num(d.totalAmount) * num(pointCount),
+          0
+        );
+
+        licenseTotal = licenses.reduce((acc: number, l: any) => {
+          const id = l.itemDetailId || {};
+          const perUser =
+            num(id.unitPrice) +
+            num(costServer?.unitPrice ?? 0) * (1 + num(id.vatRate / 100));
+          return acc + perUser * num(data.userCount);
+        }, 0);
+      }
+    } else {
+      // --- OnPremise ---
+      if (isSecurity && data.selectedFeatures) {
+        const cameraCount = data.cameraCount;
+        if (cameraCount == null) {
+          throw new Error("cameraCount không được để trống khi chọn OnPremise");
+        }
+
+        deviceTotal = devices.reduce((acc: number, device: any) => {
+          const quantity =
+            data.iconKey === "securityAlert"
+              ? device.deviceType === "AI Box"
+                ? Math.floor(num(data.cameraCount) / 2) +
+                (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+                : num(data.cameraCount)
+              : num(data.pointCount);
+          return acc + num(device.totalAmount) * num(quantity);
+        }, 0);
+
+        data.selectedFeatures.forEach((sf) => {
+          const matchingLicenses = licenses.filter(
+            (l: any) =>
+              l.selectedFeatures &&
+              l.selectedFeatures.some((lsf: any) => lsf.feature === sf.feature)
+          );
+
+          matchingLicenses.forEach((license: any) => {
+            const id = license.itemDetailId || {};
+            const base =
+              num(id.unitPrice) +
+              num(costServer?.unitPrice ?? 0) * (1 + num(id.vatRate / 100));
+            licenseTotal += base * sf.pointCount;
+          });
+        });
+      } else {
+        // OnPremise thường
+        if (data.userCount == null) {
+          throw new Error("userCount không được để trống khi chọn OnPremise");
+        }
+        const pointCount = data.pointCount;
+        if (pointCount == null) {
+          throw new Error("pointCount không được để trống khi chọn OnPremise");
+        }
+
+        deviceTotal = devices.reduce(
+          (acc: number, d: any) => acc + num(d.totalAmount) * num(pointCount),
+          0
+        );
+
+        licenseTotal = licenses.reduce((acc: number, l: any) => {
+          const id = l.itemDetailId || {};
+          const perUser =
+            num(id.unitPrice) +
+            num(costServer?.unitPrice ?? 0) * (1 + num(costServer?.vatRate ?? 0) / 100);
+          return acc + perUser;
+        }, 0);
+      }
+    }
+
+    // --- Chi phí triển khai ---
+    const deploymentCost =
+      typeof materialCosts === "number"
+        ? num(softwareInstallationCost) + num(trainingCost) + num(materialCosts)
+        : "AM tính chi phí";
+
+    // --- Tổng chi phí server ---
+    const costServerTotal = costServer
+      ? num(costServer.unitPrice) * (1 + num(costServer.vatRate) / 100)
+      : 0;
+
+    // --- Tổng cuối cùng ---
+    const grandTotal =
+      typeof deploymentCost === "number"
+        ? num(deviceTotal) + num(licenseTotal) + num(deploymentCost)
+        : "AM tính chi phí";
+
+    // --- Kết quả ---
+    return {
+      deviceTotal,
+      licenseTotal,
+      costServerTotal,
+      materialCosts,
+      softwareInstallationCost,
+      trainingCost,
+      deploymentCost,
+      grandTotal,
+      summary: {
+        deviceTotal,
+        licenseTotal,
+        costServerTotal,
+        deploymentCost,
+        grandTotal,
+      },
+    };
+  }
+
+  async updateQuotationItem(
+    id: string,
+    type: "device" | "license" | "server",
+    updatedItemId: string
+  ) {
+    // Lấy output quotation từ DB
+    const outputQuotation = await this.quotationRepository.findByIdOutPut(id);
+    if (!outputQuotation) throw new Error("Không tìm thấy dữ liệu output quotation");
+
+    // Lấy quotation gốc thông qua id tham chiếu
+    const quotation = await this.quotationRepository.findById(outputQuotation.quotationId.toString());
+    if (!quotation) throw new Error("Không tìm thấy báo giá gốc");
+
+    const data = {
+      deploymentType: quotation.deploymentType,
+      userCount: quotation.userCount,
+      pointCount: quotation.pointCount,
+      cameraCount: quotation.cameraCount,
+      selectedFeatures: quotation.selectedFeatures,
+      iconKey: quotation.iconKey,
+      siteLocation: quotation.siteLocation,
+      siteCount: quotation.siteCount,
+      categoryId: quotation.categoryId,
+    } as CreateQuotationData;
+    const isSecurity = data.iconKey === "securityAlert";
+
+    // Lấy lại danh sách gốc
+    const { devices, licenses, costServer } = await this.prepareQuotationData(data);
+
+    // --- Cập nhật item tương ứng ---
+    if (type === "device") {
+      const newDevice = await this.quotationRepository.findDeviceById(updatedItemId);
+      const index = devices.findIndex((d) => d._id.toString() === newDevice._id.toString());
+      if (index !== -1) devices[index] = newDevice;
+    }
+
+    if (type === "license") {
+      const newLicense = await this.quotationRepository.findLicenseById(updatedItemId);
+      const index = licenses.findIndex((l) => l._id.toString() === newLicense._id.toString());
+      if (index !== -1) licenses[index] = newLicense;
+    }
+
+    // --- Tính lại tổng ---
+    const totals = this.calculateTotals(data, devices, licenses, costServer, isSecurity);
+
+    // --- Lưu & trả kết quả ---
+    await this.quotationRepository.update(id, {
+      devices,
+      licenses,
+      totals,
+    });
+
+    return { ...quotation.toObject(), ...totals };
+  }
+
+
   async downloadExcel(input: CreateQuotationData): Promise<Buffer> {
-    const quotation = await this.quotationRepository.create(input);
+    const quotation = await this.createQuotation(input);
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Quotation');
 
@@ -826,8 +1225,10 @@ export class QuotationService {
         value:
           quotation.summary.deviceTotal / 1.08 +
           quotation.summary.licenseTotal -
-          ((quotation.summary.costServerTotal / 1.08) * 8) / 100 +
-          quotation.summary.deploymentCost,
+          ((quotation.summary.costServerTotal / 1.08) * 8) / 100
+        // +
+        // quotation.summary.deploymentCost
+        ,
         merge: (rowNumber: number) => `B${rowNumber}:K${rowNumber}`,
         height: 30,
       },

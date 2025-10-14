@@ -6,6 +6,8 @@ export interface SelectedFeature {
 }
 
 export interface IQuotation {
+  siteCount?: number;
+  siteLocation: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null;
   deploymentType: "Cloud" | "OnPremise";
   categoryId: Types.ObjectId;
   userCount: number | null;
@@ -24,6 +26,8 @@ const SelectedFeatureSchema = new Schema<SelectedFeature>(
 );
 
 const QuotationSchema = new Schema<IQuotation>({
+  siteCount: { type: Number, required: false },
+  siteLocation: { type: String, required: false, enum: ["TP Hà Nội", "TP Hồ Chí Minh", "Tỉnh khác"] },
   deploymentType: {
     type: String,
     required: true,

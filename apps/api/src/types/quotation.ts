@@ -1,4 +1,5 @@
 import { Types } from "mongoose";
+import { IDevice } from "../models/Device.model";
 
 // Interface cho quotation (có pointCount)
 export interface SelectedFeature {
@@ -7,6 +8,8 @@ export interface SelectedFeature {
 }
 
 export interface CreateQuotationData {
+  siteCount: number;
+  siteLocation: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null;
   deploymentType: "Cloud" | "OnPremise";
   categoryId: Types.ObjectId;
   userCount?: number;
@@ -19,22 +22,23 @@ export interface CreateQuotationData {
 export interface QuotationItemResponse {
   itemDetailId: Types.ObjectId;
   name: string;
-  deviceType?: string; //Loại thiết bị
-  selectedFeatures?: SelectedFeature[];
-  pointCount?: number;
-  vendor: string; //Nhà cung cấp
-  origin: string; //Xuất xứ
-  cameraCount?: number;
+  vendor: string;
+  origin: string;
   unitPrice: number;
-  quantity: number;
   vatRate: number;
+  quantity: number;
   priceRate: number | null;
   totalAmount: number;
   category?: string;
-  description: string;
-  note: string; //Ghi chú
-  fileId?: Types.ObjectId;
+  description?: string;
+  note?: string;
+  selectedFeatures?: any[];
+  fileId?: Types.ObjectId | null;
+  deviceType?: string;
+  pointCount?: number;
+  cameraCount?: number;
 }
+
 
 export interface CostServerResponse {
   name: string;
@@ -46,16 +50,19 @@ export interface CostServerResponse {
   totalAmount: number;
   description: string;
   note: string; //Ghi chú
-  fileId?: Types.ObjectId;
+  fileId?: Types.ObjectId | null;
 }
 
 export interface OutPutQuotationData {
-  quotationId: Types.ObjectId;
+  materialCosts: number | string; //chi phí vật tư phụ và nhân công thi công lắp đặt
+  softwareInstallationCost: number; // Chi phí cài đặt phần mềm
+  trainingCost: number;             // Chi phí đào tạo
   deploymentType: "Cloud" | "OnPremise";
   userCount: number | null;
   pointCount: number | null;
   cameraCount: number | null;
   iconKey: string;
+  screenOptions?: IDevice[],
   costServers: CostServerResponse[];
   devices: QuotationItemResponse[];
   licenses: QuotationItemResponse[];
@@ -64,9 +71,10 @@ export interface OutPutQuotationData {
     deviceTotal: number;
     licenseTotal: number;
     costServerTotal: number;
-    deploymentCost: number;
-    grandTotal: number;
+    deploymentCost: number | string; //Chi phí triển khai tổng
+    grandTotal: number | string;
   };
+  quotationId: Types.ObjectId;
   // createdAt: Date;
 }
 

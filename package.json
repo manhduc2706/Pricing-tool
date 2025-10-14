@@ -31,6 +31,9 @@
     "node": ">=18"
   },
   "dependencies": {
-    "lodash": "^4.17.21"
+    "@hookform/resolvers": "^5.2.2",
+    "lodash": "^4.17.21",
+    "react-hook-form": "^7.63.0",
+    "zod": "^4.1.11"
   }
 }

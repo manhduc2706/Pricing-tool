@@ -14,7 +14,7 @@ export interface ILicense {
   categoryId: Types.ObjectId;
   itemDetailId: Types.ObjectId;
   selectedFeatures?: AdminSelectedFeature[]; // Sử dụng AdminSelectedFeature
-  userLimit?: number | CloudUserLimit;
+  userLimit?: number;
   costServerId: Types.ObjectId;
   totalAmount: number;
 }
@@ -29,7 +29,7 @@ const AdminSelectedFeatureSchema = new Schema<AdminSelectedFeature>(
 const LicenseSchema = new Schema<ILicense>(
   {
     selectedFeatures: [AdminSelectedFeatureSchema], // Sử dụng schema mới
-    userLimit: { type: Schema.Types.Mixed, required: false },
+    userLimit: { type: Number, required: false },
     costServerId: {
       type: Schema.Types.ObjectId,
       ref: "CostServer",

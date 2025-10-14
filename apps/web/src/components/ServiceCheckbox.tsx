@@ -1,7 +1,7 @@
 import { ServiceOption } from "../types";
-import IconCheck from "./ui/icon";
-import IconB from "./ui/iconB";
-import IconC from "./ui/iconC";
+import IconAccessControl from "./ui/iconAccessControl";
+import IconAttendance from "./ui/iconAttendance";
+import IconSecurityAlert from "./ui/iconSecurityAlert";
 
 interface ServiceCheckboxProps {
   option: ServiceOption;
@@ -19,9 +19,9 @@ export default function ServiceCheckbox({
   };
 
   const iconMap: Record<string, JSX.Element> = {
-    attendance: <IconCheck />, // Chấm công
-    accessControl: <IconB />, // Kiểm soát ra vào
-    securityAlert: <IconC />, // Cảnh báo an ninh
+    attendance: <IconAttendance />, // Chấm công
+    accessControl: <IconAccessControl />, // Kiểm soát ra vào
+    securityAlert: <IconSecurityAlert />, // Cảnh báo an ninh
     // ... thêm các loại khác
   };
 
@@ -32,7 +32,7 @@ export default function ServiceCheckbox({
       `}
     >
       <input
-        type="radio" 
+        type="radio"
         name="serviceOption"
         checked={isChecked}
         onChange={handleChange}
@@ -41,9 +41,8 @@ export default function ServiceCheckbox({
       <div className="flex items-center space-x-3">
         <div className="flex items-center justify-center">
           <div
-            className={`w-4 h-4  flex items-center justify-center rounded-full border-2 ${
-              isChecked ? "border-[#0F4FAF]" : "border-gray-300"
-            }`}
+            className={`w-4 h-4  flex items-center justify-center rounded-full border-2 ${isChecked ? "border-[#0F4FAF]" : "border-gray-300"
+              }`}
           >
             {isChecked && (
               <div className="w-2 h-2 rounded-full bg-[#0F4FAF]"></div>

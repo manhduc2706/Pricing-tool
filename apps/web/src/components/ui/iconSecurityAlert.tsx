@@ -1,4 +1,4 @@
-export default function IconC() {
+export default function IconSecurityAlert() {
   return (
     <div className="flex flex-col justify-center items-start flex-grow-0 flex-shrink-0 h-5 w-5 relative overflow-hidden">
       <svg

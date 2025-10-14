@@ -11,6 +11,7 @@ export interface IItemDetail {
   description: string; //Thông số kỹ thuật
   note?: string; //Ghi chú
   quantity: number; //Số lượng mua
+  type: "device" | "license" | "server",
   fileId?: Types.ObjectId;
 }
 
@@ -28,6 +29,11 @@ const ItemDetailSchema = new Schema<IItemDetail>(
       type: String,
       required: true,
       enum: ["Cloud", "OnPremise"],
+    },
+    type: {
+      type: String,
+      enum: ["device", "license", "server"],
+      required: true,
     },
     fileId: {
       type: Schema.Types.ObjectId,

@@ -1,4 +1,4 @@
-export default function IconB() {
+export default function IconAccessControl() {
   return (
     <svg
       width="20"

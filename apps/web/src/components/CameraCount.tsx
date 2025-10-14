@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
 import IconLocation from "./ui/iconLocation";
+import { ZodType } from "zod";
 
 interface CameraCountInputProps {
-  value?: number | null; // Thêm prop value
-  onValueChange?: (value: number | null) => void; // Callback để truyền giá trị ra ngoài
+  schema?: ZodType<any>;
+  value?: number | null;
+  onValueChange?: (value: number | null, error: string | null) => void;
 }
 
 export default function CameraCountInput({
+  schema,
   value,
   onValueChange,
 }: CameraCountInputProps) {
@@ -14,7 +17,7 @@ export default function CameraCountInput({
     value ?? null
   );
 
-  // Sync với prop value khi thay đổi từ bên ngoài
+  // Đồng bộ với prop value
   useEffect(() => {
     setInternalValue(value ?? null);
   }, [value]);
@@ -22,23 +25,48 @@ export default function CameraCountInput({
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value;
 
+    // Nếu rỗng
     if (inputValue === "") {
       setInternalValue(null);
-      onValueChange?.(null);
+      onValueChange?.(null, "Giá trị không được để trống");
       return;
     }
 
     const numericValue = parseInt(inputValue, 10);
-    if (!isNaN(numericValue) && numericValue >= 1) {
-      setInternalValue(numericValue);
-      onValueChange?.(numericValue);
+
+    // Nếu không phải số
+    if (isNaN(numericValue)) {
+      setInternalValue(null);
+      onValueChange?.(null, "Giá trị phải là số");
+      return;
     }
+
+    // Nếu < 1
+    if (numericValue < 1) {
+      setInternalValue(numericValue);
+      onValueChange?.(numericValue, "Giá trị phải >= 1");
+      return;
+    }
+
+    // Nếu có schema thì validate
+    if (schema) {
+      const result = schema.safeParse(numericValue);
+      if (!result.success) {
+        setInternalValue(numericValue);
+        onValueChange?.(numericValue, result.error.issues[0].message);
+        return;
+      }
+    }
+
+    // Hợp lệ
+    setInternalValue(numericValue);
+    onValueChange?.(numericValue, null);
   };
 
   const handleBlur = () => {
     if (internalValue === null || internalValue < 1) {
       setInternalValue(null);
-      onValueChange?.(null);
+      onValueChange?.(null, "Giá trị không được < 1");
     }
   };
 

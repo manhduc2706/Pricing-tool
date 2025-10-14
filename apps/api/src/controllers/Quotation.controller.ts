@@ -22,15 +22,7 @@ export class QuotationController {
   async createQuotation(req: Request, res: Response): Promise<void> {
     try {
       // Map request data từ FE
-      const requestData = {
-        deploymentType: req.body.deploymentType,
-        categoryId: new Types.ObjectId(req.body._id), // FE gửi _id là categoryId
-        userCount: req.body.userCount,
-        pointCount: req.body.pointCount,
-        cameraCount: req.body.cameraCount,
-        selectedFeatures: req.body.selectedFeatures || [], // Nhận selectedFeatures
-        iconKey: req.body.iconKey, // Nhận iconKey để xác định loại service
-      };
+      const requestData = req.body;
 
       const result = await this.quotationService.createQuotation(requestData);
 
@@ -48,18 +40,41 @@ export class QuotationController {
     }
   }
 
+  async updateQuotationItem(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { type, updatedItemId } = req.body;
+
+      if (!type || !updatedItemId) {
+        return res.status(400).json({
+          message: "Thiếu tham số: type hoặc updatedItemId",
+        });
+      }
+
+      const updatedQuotation = await this.quotationService.updateQuotationItem(
+        id,
+        type,
+        updatedItemId
+      );
+
+      return res.status(200).json({
+        message: "Cập nhật thành công",
+        data: updatedQuotation,
+      });
+    } catch (error: any) {
+      console.error("Lỗi updateQuotationItem:", error);
+      return res.status(500).json({
+        message: "Lỗi khi cập nhật báo giá",
+        error: error.message,
+      });
+    }
+  }
+
+
   async downloadExcelForm(req: Request, res: Response): Promise<void> {
     try {
       // Map request data từ FE
-      const requestData = {
-        deploymentType: req.body.deploymentType,
-        categoryId: new Types.ObjectId(req.body._id), // FE gửi _id là categoryId
-        userCount: req.body.userCount,
-        pointCount: req.body.pointCount,
-        cameraCount: req.body.cameraCount,
-        selectedFeatures: req.body.selectedFeatures || [], // Nhận selectedFeatures
-        iconKey: req.body.iconKey, // Nhận iconKey để xác định loại service
-      };
+      const requestData = req.body;
 
       const buffer = await this.quotationService.downloadExcel(requestData);
 

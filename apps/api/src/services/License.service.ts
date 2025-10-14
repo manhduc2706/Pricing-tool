@@ -74,21 +74,8 @@ export class LicenseService {
 
     if (updateData.userLimit !== undefined) {
       if (typeof updateData.userLimit === "number") {
-        // trường hợp OnPremise
         if (updateData.userLimit <= 0) {
           throw new Error("Giới hạn người dùng phải lớn hơn 0");
-        }
-      } else if (
-        typeof updateData.userLimit === "object" &&
-        typeof updateData.userLimit.min === "number" &&
-        typeof updateData.userLimit.max === "number"
-      ) {
-        // trường hợp Cloud
-        if (updateData.userLimit.min <= 0 || updateData.userLimit.max <= 0) {
-          throw new Error("Giới hạn người dùng phải lớn hơn 0");
-        }
-        if (updateData.userLimit.min > updateData.userLimit.max) {
-          throw new Error("Min không được lớn hơn max");
         }
       } else {
         throw new Error("userLimit không hợp lệ");

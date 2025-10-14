@@ -1,69 +1,71 @@
-import { useState } from "react";
+import { ZodType } from "zod";
+import { useState, useEffect } from "react";
 import IconUser from "./ui/iconUser";
+import { WarningBox } from "./ui/WarningBox";
 
 interface UserInputProps {
+  schema: ZodType<any>;
   infrastructure: "Cloud" | "OnPremise" | null;
-  fixedUserLimits?: (number | string)[] | null; // Các mốc cố định nếu chọn OnPremise
-  onValueChange?: (value: number | null) => void; // Callback để truyền giá trị ra ngoài
+  fixedUserLimits?: (number | string)[] | null;
+  onValueChange?: (value: number | null, error: string | null) => void;
 }
 
 export default function UserInput({
   infrastructure,
   fixedUserLimits = null,
+  schema,
   onValueChange,
 }: UserInputProps) {
-  const [value, setValue] = useState<number | null>(null);
+  const [value, setValue] = useState<number | null>(null); // numeric value
+  const [selected, setSelected] = useState<string>(""); // string bound to select
   const [showWarningOnPremise, setShowWarningOnPremise] = useState(false);
   const [showWarningOnCloud, setShowWarningOnCloud] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const inputValue = e.target.value;
+  // keep local states in sync if parent provides value differently later
+  useEffect(() => {
+    // nothing to sync from parent in this version; left for future use
+  }, []);
 
-    // Kiểm tra trường hợp ">5000" trước
-    if (inputValue === ">5000") {
-      setShowWarningOnPremise(true);
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const raw = e.target.value;
+    setSelected(raw);
+
+    // special OnPremise >5000
+    if (raw === ">5000") {
       setValue(null);
-      onValueChange?.(null);
+      setShowWarningOnPremise(true);
+      setShowWarningOnCloud(false);
       return;
     } else {
       setShowWarningOnPremise(false);
     }
 
-    // Xử lý Cloud
-    if (infrastructure === "Cloud") {
-      const numericValue = parseInt(inputValue, 10);
-      // Kiểm tra số >2000
-      if (!isNaN(numericValue) && numericValue > 2000) {
-        setShowWarningOnCloud(true);
-      } else {
-        setShowWarningOnCloud(false);
-      }
-      if (!isNaN(numericValue) && numericValue >= 1) {
-        setValue(numericValue);
-        onValueChange?.(numericValue);
-      } else if (inputValue === "") {
-        setValue(null);
-        onValueChange?.(null);
-      }
+    // special Cloud >2000
+    if (raw === ">2000") {
+      setValue(null);
+      setShowWarningOnCloud(true);
+      setShowWarningOnPremise(false);
+      return;
+    } else {
+      setShowWarningOnCloud(false);
     }
 
-    // Xử lý OnPremise
-    else if (infrastructure === "OnPremise" && fixedUserLimits) {
-      const numericValue = parseInt(inputValue, 10);
-      if (!isNaN(numericValue)) {
-        setValue(numericValue);
-        onValueChange?.(numericValue);
-      }
-    }
-  };
+    // parse numeric option
+    const parsed = parseInt(raw, 10);
+    if (!isNaN(parsed)) {
+      setValue(parsed);
 
-  const handleBlur = () => {
-    if (infrastructure === "Cloud" && (value === null || value < 1)) {
-      setValue(null); // Không gán giá trị mặc định
-      onValueChange?.(null); // Gọi callback với giá trị null
+      // validate numeric with zod
+      const result = schema.safeParse(parsed);
+      const error = result.success ? null : result.error.issues[0].message;
+
+      onValueChange?.(parsed, error ?? null);
+      return;
     }
+
+    // fallback: invalid selection (shouldn't happen)
+    setValue(null);
+    onValueChange?.(null, "Giá trị không hợp lệ");
   };
 
   return (
@@ -75,21 +77,11 @@ export default function UserInput({
         <IconUser />
         Số lượng user sử dụng hệ thống:
       </label>
-      {infrastructure === "Cloud" ? (
-        <input
-          id="user-input"
-          type="number"
-          min={1}
-          placeholder="Nhập số user"
-          value={value ?? ""}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          className="border px-2 py-1 rounded w-64 mb-4"
-        />
-      ) : infrastructure === "OnPremise" && fixedUserLimits ? (
+
+      {fixedUserLimits && (infrastructure === "Cloud" || infrastructure === "OnPremise") ? (
         <select
           id="user-input"
-          value={value ?? ""}
+          value={selected}
           onChange={handleChange}
           className="border px-2 py-1 rounded w-64 mb-4"
         >
@@ -97,23 +89,24 @@ export default function UserInput({
             -- Chọn số lượng user --
           </option>
           {fixedUserLimits.map((limit) => (
-            <option key={limit} value={limit}>
-              {limit} users
+            <option key={String(limit)} value={String(limit)}>
+              {String(limit) === ">5000" ? ">5000 users" : String(limit) === ">2000" ? ">2000 users" : `${limit} users`}
             </option>
           ))}
         </select>
       ) : null}
 
       {showWarningOnPremise && (
-        <p className="text-red-600 text-sm mt-1">
-          Nếu số lượng user vượt quá 5000! Vui lòng liên hệ quản trị viên.
-        </p>
+        <WarningBox>
+          Nếu số lượng user vượt quá <span className="font-semibold">5000</span> — Vui lòng liên hệ quản trị viên.
+        </WarningBox>
       )}
 
+
       {showWarningOnCloud && (
-        <p className="text-red-600 text-sm mt-1">
-          Số lượng user vượt quá 2000! Vui lòng liên hệ quản trị viên.
-        </p>
+        <WarningBox>
+          Nếu số lượng user vượt quá <span className="font-semibold">2000</span> — Vui lòng liên hệ quản trị viên.
+        </WarningBox>
       )}
     </div>
   );

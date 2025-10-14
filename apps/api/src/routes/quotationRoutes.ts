@@ -6,5 +6,6 @@ const quotationController = new QuotationController();
 
 // Basic CRUD routes
 router.post("/", quotationController.createQuotation); // Tạo mới báo giá
+router.patch("/:id/update", quotationController.updateQuotationItem); //update
 router.post("/createExcel", quotationController.downloadExcelForm);
 export default router;
