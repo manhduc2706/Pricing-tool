@@ -12,6 +12,7 @@ export class QuotationController {
     // Bind all methods to this context
     this.createQuotation = this.createQuotation.bind(this);
     this.downloadExcelForm = this.downloadExcelForm.bind(this);
+    this.updateQuotationItem = this.updateQuotationItem.bind(this)
   }
 
   /**
@@ -22,7 +23,17 @@ export class QuotationController {
   async createQuotation(req: Request, res: Response): Promise<void> {
     try {
       // Map request data từ FE
-      const requestData = req.body;
+      const requestData = {
+        siteCount: req.body.siteCount,
+        siteLocation: req.body.siteLocation,
+        deploymentType: req.body.deploymentType,
+        categoryId: new Types.ObjectId(req.body._id), // FE gửi _id là categoryId
+        userCount: req.body.userCount,
+        pointCount: req.body.pointCount,
+        cameraCount: req.body.cameraCount,
+        selectedFeatures: req.body.selectedFeatures || [], // Nhận selectedFeatures
+        iconKey: req.body.iconKey, // Nhận iconKey để xác định loại service
+      };
 
       const result = await this.quotationService.createQuotation(requestData);
 
@@ -74,7 +85,17 @@ export class QuotationController {
   async downloadExcelForm(req: Request, res: Response): Promise<void> {
     try {
       // Map request data từ FE
-      const requestData = req.body;
+      const requestData = {
+        siteCount: req.body.siteCount,
+        siteLocation: req.body.siteLocation,
+        deploymentType: req.body.deploymentType,
+        categoryId: new Types.ObjectId(req.body._id), // FE gửi _id là categoryId
+        userCount: req.body.userCount,
+        pointCount: req.body.pointCount,
+        cameraCount: req.body.cameraCount,
+        selectedFeatures: req.body.selectedFeatures || [], // Nhận selectedFeatures
+        iconKey: req.body.iconKey, // Nhận iconKey để xác định loại service
+      };
 
       const buffer = await this.quotationService.downloadExcel(requestData);
 

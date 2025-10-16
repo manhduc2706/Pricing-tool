@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SelectedFeature, ShowQuotationProps } from "../types";
 import axios from "axios";
 
@@ -9,6 +9,16 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
 
   const [updatedQuotation, setUpdatedQuotation] = useState(quotation);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setUpdatedQuotation(quotation);
+
+    const currentScreen = quotation.devices.find(d => d.deviceType === "Màn hình");
+    if (currentScreen) {
+      setSelectedScreenId(currentScreen.itemDetailId);
+    }
+  }, [quotation]);
+
 
   //Hàm xử lý chọn màn hình và gọi API
   const handleScreenChange = async (screenId: string) => {
@@ -33,7 +43,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
     }
   };
 
-  const totalLicenseAmount = quotation.licenses.reduce((sum, l) => {
+  const totalLicenseAmount = updatedQuotation.licenses.reduce((sum, l) => {
     const qty = Number(l.quantity) || 0;
     const price = Number(l.unitPrice) || 0;
     return sum + qty * price;
@@ -64,15 +74,15 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
 
 
   const mergedItems: MergedItem[] = [
-    ...quotation.devices.map((item) => ({
+    ...updatedQuotation.devices.map((item) => ({
       ...item,
       sourceType: "device" as const,
     })),
-    ...quotation.licenses.map((item) => ({
+    ...updatedQuotation.licenses.map((item) => ({
       ...item,
       sourceType: "license" as const,
     })),
-    ...quotation.costServers
+    ...updatedQuotation.costServers
       .filter((item) => item.unitPrice > 0)
       .map((item) => ({
         ...item,
@@ -85,30 +95,30 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
         name: "Chi phí cài đặt phần mềm",
         description: `- Cài đặt và cấu hình hệ thống phần mềm.\n- Thiết lập máy chủ hoặc môi trường triển khai.\n- Kiểm tra kết nối và phân quyền người dùng.\n- Đảm bảo hệ thống hoạt động ổn định trước khi bàn giao.`,
         quantity: 1,
-        unitPrice: quotation.softwareInstallationCost,
-        totalAmount: quotation.softwareInstallationCost,
+        unitPrice: updatedQuotation.softwareInstallationCost,
+        totalAmount: updatedQuotation.softwareInstallationCost,
         sourceType: "custom-1" as const,
       },
       {
         name: "Chi phí đào tạo",
         description: `- Hướng dẫn vận hành và sử dụng hệ thống.\n- Đào tạo nhập liệu, tra cứu và xuất báo cáo.\n- Tổ chức đào tạo trực tuyến hoặc trực tiếp theo yêu cầu khách hàng.`,
         quantity: 1,
-        unitPrice: quotation.trainingCost,
-        totalAmount: quotation.trainingCost,
+        unitPrice: updatedQuotation.trainingCost,
+        totalAmount: updatedQuotation.trainingCost,
         sourceType: "custom-2" as const,
       },
       {
         name: "Chi phí vật tư phụ và nhân công thi công lắp đặt",
         description: `- Bao gồm dây cáp, đầu nối, ống luồn, phụ kiện cố định thiết bị.\n- Nhân công thực hiện lắp đặt thiết bị tại hiện trường.\n- Chi phí phụ thuộc vào địa điểm và khối lượng công việc cụ thể.`,
         quantity: 1,
-        unitPrice: quotation.materialCosts,
-        totalAmount: quotation.materialCosts,
+        unitPrice: updatedQuotation.materialCosts,
+        totalAmount: updatedQuotation.materialCosts,
         sourceType: "custom-3" as const,
       }
     ]),
 
 
-    ...(quotation.deploymentType === "Cloud"
+    ...(updatedQuotation.deploymentType === "Cloud"
       ? [
         {
           name: "(Miễn phí) Phí bảo trì và nâng cấp hàng năm",
@@ -119,7 +129,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
           sourceType: "custom-cloud" as const,
         },
       ]
-      : quotation.deploymentType === "OnPremise"
+      : updatedQuotation.deploymentType === "OnPremise"
         ? [
           {
             name: "(Tùy chọn) Phí bảo trì và nâng cấp hằng năm (tính từ năm thứ 2)",
@@ -168,7 +178,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
                       className="border rounded px-2 py-1"
                       disabled={loading}
                     >
-                      {quotation.screenOptions.map((screen) => (
+                      {updatedQuotation.screenOptions.map((screen) => (
                         <option key={screen._id} value={screen._id}>
                           {screen.itemDetailId?.name ?? ""}
                         </option>
@@ -213,7 +223,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               Chi phí triển khai:
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
-              {quotation.summary.deploymentCost.toLocaleString("vi-VN")} VND
+              {updatedQuotation.summary.deploymentCost.toLocaleString("vi-VN")} VND
             </td>
           </tr>
           <tr>
@@ -222,9 +232,9 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
               {(
-                quotation.summary.deviceTotal / 1.08 +
-                quotation.summary.licenseTotal -
-                ((quotation.summary.costServerTotal / 1.08) * 8) / 100
+                updatedQuotation.summary.deviceTotal / 1.08 +
+                updatedQuotation.summary.licenseTotal -
+                ((updatedQuotation.summary.costServerTotal / 1.08) * 8) / 100
                 // +
                 // quotation.summary.deploymentCost
               ).toLocaleString("vi-VN")}{" "}
@@ -237,8 +247,8 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
               {(
-                ((quotation.summary.deviceTotal / 1.08 +
-                  quotation.summary.costServerTotal / 1.08) *
+                ((updatedQuotation.summary.deviceTotal / 1.08 +
+                  updatedQuotation.summary.costServerTotal / 1.08) *
                   8) /
                 100
               ).toLocaleString("vi-VN")}{" "}
@@ -257,7 +267,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               Tổng cộng:
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-[#0F4FAF] text-lg font-semibold">
-              {quotation.summary.grandTotal.toLocaleString("vi-VN")} VND
+              {updatedQuotation.summary.grandTotal.toLocaleString("vi-VN")} VND
             </td>
           </tr>
         </tbody>

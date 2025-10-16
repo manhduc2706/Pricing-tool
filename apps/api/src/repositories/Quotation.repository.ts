@@ -48,9 +48,16 @@ export class QuotationRepository {
   async findDeviceById(id: string) {
     const device = await DeviceModel.findById(id)
       .populate("itemDetailId")
-      .populate("categoryId");
+      .populate("categoryId")
     if (!device) throw new Error(`Không tìm thấy thiết bị với id: ${id}`);
     return device;
+  }
+
+  async findDevices() {
+    return await DeviceModel.find()
+      .populate("itemDetailId")
+      .populate("categoryId")
+      .lean();
   }
 
   //Tìm 1 license cụ thể theo ID
@@ -82,12 +89,26 @@ export class QuotationRepository {
 
   //Cập nhập báo giá theo id
   async update(id: string | Types.ObjectId, data: any) {
-    return QuotationModel.findByIdAndUpdate(
-      id,
-      { $set: data },
-      { new: true } // Trả về document đã cập nhật
-    );
+    await OutputQuotationModel.findByIdAndUpdate(id, { $set: data });
+    return OutputQuotationModel.findById(id)
+      .populate({
+        path: "screenOptions",
+        populate: [
+          { path: "categoryId" },
+          { path: "itemDetailId" },
+        ],
+      })
+      .populate({
+        path: "devices.itemDetailId",
+        select: "name vendor origin unitPrice description note"
+      })
+      .populate({
+        path: "licenses.itemDetailId",
+        select: "name vendor origin unitPrice description note"
+      });
   }
+
+
 
   async findByCategoryId(categoryId: string) {
     return await QuotationModel.find({ categoryId });

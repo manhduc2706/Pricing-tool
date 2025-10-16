@@ -398,12 +398,13 @@ export class QuotationService {
     updatedItemId: string
   ) {
     // Lấy output quotation từ DB
-    const outputQuotation = await this.quotationRepository.findByIdOutPut(id);
+    let outputQuotation = await this.quotationRepository.findByIdOutPut(id);
     if (!outputQuotation) throw new Error("Không tìm thấy dữ liệu output quotation");
 
     // Lấy quotation gốc thông qua id tham chiếu
     const quotation = await this.quotationRepository.findById(outputQuotation.quotationId.toString());
     if (!quotation) throw new Error("Không tìm thấy báo giá gốc");
+    const num = this.num;
 
     const data = {
       deploymentType: quotation.deploymentType,
@@ -416,35 +417,65 @@ export class QuotationService {
       siteCount: quotation.siteCount,
       categoryId: quotation.categoryId,
     } as CreateQuotationData;
-    const isSecurity = data.iconKey === "securityAlert";
+    let { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
 
-    // Lấy lại danh sách gốc
-    const { devices, licenses, costServer } = await this.prepareQuotationData(data);
 
     // --- Cập nhật item tương ứng ---
     if (type === "device") {
       const newDevice = await this.quotationRepository.findDeviceById(updatedItemId);
-      const index = devices.findIndex((d) => d._id.toString() === newDevice._id.toString());
-      if (index !== -1) devices[index] = newDevice;
-    }
+      if (!newDevice) throw new Error("Không tìm thấy thiết bị cần cập nhật");
 
-    if (type === "license") {
-      const newLicense = await this.quotationRepository.findLicenseById(updatedItemId);
-      const index = licenses.findIndex((l) => l._id.toString() === newLicense._id.toString());
-      if (index !== -1) licenses[index] = newLicense;
+      devices = newDevice ? [newDevice, ...otherDevices] : otherDevices;
     }
 
     // --- Tính lại tổng ---
     const totals = this.calculateTotals(data, devices, licenses, costServer, isSecurity);
 
+    // 3) Trả dữ liệu chuẩn FE
+    const deviceResponses: QuotationItemResponse[] = devices.map(
+      (device: any) => {
+        const quantity =
+          data.iconKey === "securityAlert"
+            ? device.deviceType === "AI Box"
+              ? Math.floor(num(data.cameraCount) / 2) +
+              (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+              : num(data.cameraCount) // Nếu không, dùng cameraCount
+            : num(data.pointCount); // Nếu không phải securityAlert, dùng pointCount
+
+        return {
+          itemDetailId: device.itemDetailId._id,
+          fileId: device.itemDetailId.fileId,
+          name: device.itemDetailId?.name,
+          deviceType: device.deviceType,
+          selectedFeatures: device.selectedFeatures ?? [],
+          vendor: device.itemDetailId.vendor,
+          origin: device.itemDetailId.origin,
+          unitPrice: num(device.itemDetailId?.unitPrice),
+          quantity,
+          priceRate: num(
+            (device.itemDetailId?.unitPrice *
+              device.itemDetailId?.vatRate *
+              quantity) /
+            100
+          ),
+          vatRate: num(device.itemDetailId?.vatRate),
+          cameraCount: data.cameraCount,
+          totalAmount: num(device.totalAmount),
+          category: device.categoryId?.name,
+          description: device.itemDetailId?.description,
+          note: device.itemDetailId?.note,
+        };
+      }
+    );
+
     // --- Lưu & trả kết quả ---
     await this.quotationRepository.update(id, {
-      devices,
-      licenses,
-      totals,
+      devices: deviceResponses,
+      summary: totals
     });
 
-    return { ...quotation.toObject(), ...totals };
+    const refreshedQuotation = await this.quotationRepository.findByIdOutPut(id);
+    return refreshedQuotation;
   }
 
 
