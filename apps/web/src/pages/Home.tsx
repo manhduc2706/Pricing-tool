@@ -23,7 +23,6 @@ const schema = z.object({
   userCount: z.number().min(1, "Số lượng user phải > 0").nullable(),
   pointCount: z.number().min(1, "Số lượng vị trí phải > 0").nullable(),
   cameraCount: z.number().min(1, "Số lượng camera phải > 0").nullable(),
-  selectedFeatures: z.array(z.string()).min(1, "Bạn phải chọn ít nhất một dịch vụ"),
 });
 
 export default function Home() {
@@ -73,8 +72,7 @@ export default function Home() {
 
   const userCountSchema = z.number().min(1, "Số lượng user phải > 0").nullable();
   const pointCountSchema = z.number().min(1, "Số lượng vị trí phải > 0").nullable();
-  const cameraCountSchema = z.number().min(1, "Số lượng camera phải > 0").nullable();
-  const selectedFeaturesSchema = z.array(z.string()).min(1, "Bạn phải chọn ít nhất một dịch vụ");
+  // const selectedFeaturesSchema = z.array(z.string()).min(1, "Bạn phải chọn ít nhất một dịch vụ");
   const siteCountSchema = z.number().min(1, "Số site phải > 0").nullable();
 
   const handleSiteOptionChange = (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác") => {
@@ -217,7 +215,7 @@ export default function Home() {
   }
 
   // Gom state values
-  const values = { siteCount, siteOption, userCount, pointCount, cameraCount, selectedFeatures };
+  const values = { siteCount, siteOption, userCount, pointCount, cameraCount, selectedFeatures, selectedService, infrastructure };
 
   const fieldLabels: Record<keyof typeof values, string> = {
     siteCount: "Số lượng site",
@@ -226,6 +224,8 @@ export default function Home() {
     pointCount: "Số lượng vị trí",
     cameraCount: "Số lượng camera",
     selectedFeatures: "Giá trị trong tính năng",
+    selectedService: "Dịch vụ cần triển khai",
+    infrastructure: "Hạ tầng cần triển khai",
   };
 
   const handleValueChange = (
@@ -239,6 +239,8 @@ export default function Home() {
     if (name === "selectedFeatures") setSelectedFeatures(newValue);
     if (name === "siteCount") setSiteCount(newValue);
     if (name === "siteOption") setSiteOption(newValue);
+    if (name === "selectedService") setSelectedService(newValue);
+    if (name === "infrastructure") setInfrastructure(newValue);
 
     // Nếu có error, hiển thị ưu tiên
     if (error) {
@@ -298,7 +300,10 @@ export default function Home() {
               </h2>
               <SiteLocationCheckbox
                 selectedSiteLocation={siteOption}
-                onChange={handleSiteOptionChange} />
+                onChange={handleSiteOptionChange}
+                onValueChange={(selected, errors) =>
+                  handleValueChange("siteOption", selected, errors.length ? errors[0] : null)}
+              />
             </>
 
             <>
@@ -309,6 +314,9 @@ export default function Home() {
               <InfrastructureSelector
                 selectedInfrastructure={infrastructure}
                 onChange={handleInfrastructureChange}
+                onValueChange={(selected, errors) =>
+                  handleValueChange("infrastructure", selected, errors.length ? errors[0] : null)
+                }
               />
             </>
 
@@ -328,6 +336,9 @@ export default function Home() {
                       option={option}
                       isChecked={selectedService === option._id}
                       onChange={handleServiceChange}
+                      onValueChange={(optionId, errors) => {
+                        handleValueChange("selectedService", optionId, errors.length ? errors[0] : null)
+                      }}
                     />
                   ))}
                 </div>

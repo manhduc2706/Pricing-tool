@@ -4,11 +4,13 @@ import IconOnPremise from "./ui/iconOnPremise";
 interface InfrastructureSelectorProps {
   selectedInfrastructure: "Cloud" | "OnPremise" | null;
   onChange: (selected: "Cloud" | "OnPremise") => void;
+  onValueChange: (selected: "Cloud" | "OnPremise", errors: string[]) => void
 }
 
 export default function InfrastructureSelector({
   selectedInfrastructure,
   onChange,
+  onValueChange,
 }: InfrastructureSelectorProps) {
   const options = [
     {
@@ -25,6 +27,11 @@ export default function InfrastructureSelector({
     },
   ];
 
+  const handleSelect = (optionId: "Cloud" | "OnPremise") => {
+    onChange(optionId); // cập nhật state cha
+    onValueChange(optionId, []); // gửi thông báo "đã thay đổi"
+  };
+
   return (
     <div>
       <h3 className="block font-medium text-gray-700 mb-4">
@@ -35,30 +42,28 @@ export default function InfrastructureSelector({
           <label
             key={option.id}
             className={`flex items-center p-4 border rounded-lg cursor-pointer transition
-              ${
-                selectedInfrastructure === option.id
-                  ? "border-[#0F4FAF] bg-blue-50"
-                  : "border-gray-300"
+              ${selectedInfrastructure === option.id
+                ? "border-[#0F4FAF] bg-blue-50"
+                : "border-gray-300"
               }
             `}
-            onClick={() => onChange(option.id as "Cloud" | "OnPremise")}
+            onClick={() => handleSelect(option.id as "Cloud" | "OnPremise")}
           >
             <input
               type="radio"
               name="infrastructure"
               value={option.id}
               checked={selectedInfrastructure === option.id}
-              onChange={() => onChange(option.id as "Cloud" | "OnPremise")}
+              onChange={() => handleSelect(option.id as "Cloud" | "OnPremise")}
               className="hidden"
             />
             <div className="flex items-center space-x-3">
               <div className="flex items-center justify-center">
                 <div
-                  className={`w-4 h-4 flex items-center justify-center rounded-full border-2 ${
-                    selectedInfrastructure === option.id
+                  className={`w-4 h-4 flex items-center justify-center rounded-full border-2 ${selectedInfrastructure === option.id
                       ? "border-[#0F4FAF]"
                       : "border-gray-300"
-                  }`}
+                    }`}
                 >
                   {selectedInfrastructure === option.id && (
                     <div className="w-2 h-2 rounded-full bg-[#0F4FAF]"></div>

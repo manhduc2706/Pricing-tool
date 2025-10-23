@@ -7,15 +7,18 @@ interface ServiceCheckboxProps {
   option: ServiceOption;
   isChecked: boolean;
   onChange: (optionId: string) => void; // Chỉ cần truyền `optionId` khi chọn
+  onValueChange: (optionId: string, errors: string[]) => void;
 }
 
 export default function ServiceCheckbox({
   option,
   isChecked,
   onChange,
+  onValueChange,
 }: ServiceCheckboxProps) {
   const handleChange = () => {
     onChange(option._id); // Gọi hàm `onChange` với `optionId`
+    onValueChange(option._id, [])
   };
 
   const iconMap: Record<string, JSX.Element> = {

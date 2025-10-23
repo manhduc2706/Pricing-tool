@@ -234,7 +234,7 @@ export class QuotationService {
 
     // --- Chi phí cố định ---
     const materialCosts =
-      data.siteLocation === "Tỉnh khác" && data.siteCount > 1
+      data.siteCount > 1
         ? "AM tính chi phí"
         : 5000000;
     const softwareInstallationCost = 5000000;
@@ -242,7 +242,9 @@ export class QuotationService {
 
     // --- Bắt đầu tính tổng ---
     let licenseTotal = 0;
+    let licenseTotalNoVat = 0;
     let deviceTotal = 0;
+    let deviceTotalNoVat = 0;
 
     if (data.deploymentType === "Cloud") {
       // --- Cloud ---
@@ -253,6 +255,7 @@ export class QuotationService {
           throw new Error("cameraCount không được để trống khi chọn Cloud");
         }
 
+        //Tổng giá thiết bị bao gồm vat
         deviceTotal = devices.reduce((acc: number, device: any) => {
           const quantity =
             data.iconKey === "securityAlert"
@@ -264,6 +267,20 @@ export class QuotationService {
           return acc + num(device.totalAmount) * num(quantity);
         }, 0);
 
+        //Tổng giá thiết bị chưa bao gồm vat
+        deviceTotalNoVat = devices.reduce((acc: number, device: any) => {
+          const id = device.itemDetailId || {};
+          const quantity =
+            data.iconKey === "securityAlert"
+              ? device.deviceType === "AI Box"
+                ? Math.floor(num(data.cameraCount) / 2) +
+                (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+                : num(data.cameraCount)
+              : num(data.pointCount);
+          return acc + num(device.id.unitPrice) * num(quantity);
+        }, 0);
+
+        //Tổng giá license + server bao gồm vat
         data.selectedFeatures.forEach((sf) => {
           const matchingLicenses = licenses.filter(
             (l: any) =>
@@ -279,6 +296,24 @@ export class QuotationService {
             licenseTotal += base * sf.pointCount;
           });
         });
+
+        //Tổng giá license + server chưa bao gồm vat
+        data.selectedFeatures.forEach((sf) => {
+          const matchingLicenses = licenses.filter(
+            (l: any) =>
+              l.selectedFeatures &&
+              l.selectedFeatures.some((lsf: any) => lsf.feature === sf.feature)
+          );
+
+          matchingLicenses.forEach((license: any) => {
+            const id = license.itemDetailId || {};
+            const base =
+              num(id.unitPrice) +
+              num(costServer?.unitPrice ?? 0);
+            licenseTotalNoVat += base * sf.pointCount;
+          });
+        });
+
       } else {
         // Cloud thường
         if (data.userCount == null) {
@@ -289,16 +324,33 @@ export class QuotationService {
           throw new Error("pointCount không được để trống khi chọn Cloud");
         }
 
+        //Tổng thiết bị bao gồm vat
         deviceTotal = devices.reduce(
           (acc: number, d: any) => acc + num(d.totalAmount) * num(pointCount),
           0
         );
 
+        //Tổng thiết bị chưa bao gồm vat
+        deviceTotalNoVat = devices.reduce(
+          (acc: number, d: any) => acc + num(d.itemDetailId.unitPrice) * num(pointCount),
+          0
+        );
+
+        //Tổng license + server bao gồm vat
         licenseTotal = licenses.reduce((acc: number, l: any) => {
           const id = l.itemDetailId || {};
           const perUser =
             num(id.unitPrice) +
             num(costServer?.unitPrice ?? 0) * (1 + num(id.vatRate / 100));
+          return acc + perUser;
+        }, 0);
+
+        //Tổng license + server chưa bao gồm vat
+        licenseTotalNoVat = licenses.reduce((acc: number, l: any) => {
+          const id = l.itemDetailId || {};
+          const perUser =
+            num(id.unitPrice) +
+            num(costServer?.unitPrice ?? 0);
           return acc + perUser;
         }, 0);
       }
@@ -310,6 +362,7 @@ export class QuotationService {
           throw new Error("cameraCount không được để trống khi chọn OnPremise");
         }
 
+        //Tổng thiết bị bao gồm vat
         deviceTotal = devices.reduce((acc: number, device: any) => {
           const quantity =
             data.iconKey === "securityAlert"
@@ -321,6 +374,20 @@ export class QuotationService {
           return acc + num(device.totalAmount) * num(quantity);
         }, 0);
 
+        //Tổng thiết bị chưa bao gồm vat
+        deviceTotalNoVat = devices.reduce((acc: number, device: any) => {
+          const id = device.itemDetailId || {};
+          const quantity =
+            data.iconKey === "securityAlert"
+              ? device.deviceType === "AI Box"
+                ? Math.floor(num(data.cameraCount) / 2) +
+                (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
+                : num(data.cameraCount)
+              : num(data.pointCount);
+          return acc + num(device.id.unitPrice) * num(quantity);
+        }, 0);
+
+        //Tổng license + server bao gồm vat
         data.selectedFeatures.forEach((sf) => {
           const matchingLicenses = licenses.filter(
             (l: any) =>
@@ -336,6 +403,24 @@ export class QuotationService {
             licenseTotal += base * sf.pointCount;
           });
         });
+
+        //Tổng license + server chưa bao gồm vat
+        data.selectedFeatures.forEach((sf) => {
+          const matchingLicenses = licenses.filter(
+            (l: any) =>
+              l.selectedFeatures &&
+              l.selectedFeatures.some((lsf: any) => lsf.feature === sf.feature)
+          );
+
+          matchingLicenses.forEach((license: any) => {
+            const id = license.itemDetailId || {};
+            const base =
+              num(id.unitPrice) +
+              num(costServer?.unitPrice ?? 0);
+            licenseTotalNoVat += base * sf.pointCount;
+          });
+        });
+
       } else {
         // OnPremise thường
         if (data.userCount == null) {
@@ -346,11 +431,19 @@ export class QuotationService {
           throw new Error("pointCount không được để trống khi chọn OnPremise");
         }
 
+        //Tổng thiết bị bao gồm vat
         deviceTotal = devices.reduce(
           (acc: number, d: any) => acc + num(d.totalAmount) * num(pointCount),
           0
         );
 
+        //Tổng thiết bị chưa bao gồm vat
+        deviceTotalNoVat = devices.reduce(
+          (acc: number, d: any) => acc + num(d.itemDetailId.unitPrice) * num(pointCount),
+          0
+        );
+
+        //Tổng license + server bao gồm vat
         licenseTotal = licenses.reduce((acc: number, l: any) => {
           const id = l.itemDetailId || {};
           const perUser =
@@ -358,6 +451,16 @@ export class QuotationService {
             num(costServer?.unitPrice ?? 0) * (1 + num(costServer?.vatRate ?? 0) / 100);
           return acc + perUser;
         }, 0);
+
+        //Tổng license + server chưa bao gồm vat
+        licenseTotalNoVat = licenses.reduce((acc: number, l: any) => {
+          const id = l.itemDetailId || {};
+          const perUser =
+            num(id.unitPrice) +
+            num(costServer?.unitPrice ?? 0);
+          return acc + perUser;
+        }, 0);
+
       }
     }
 
@@ -365,7 +468,7 @@ export class QuotationService {
     const deploymentCost =
       typeof materialCosts === "number"
         ? num(softwareInstallationCost) + num(trainingCost) + num(materialCosts)
-        : "AM tính chi phí";
+        : num(softwareInstallationCost) + num(trainingCost);
 
     // --- Tổng chi phí server có vat ---
     const costServerTotal = Math.round(costServer
@@ -377,17 +480,14 @@ export class QuotationService {
       ? num(costServer.unitPrice)
       : 0);
 
-    // --- Tổng cuối cùng có vat---
-    const grandTotal =
-      typeof deploymentCost === "number"
-        ? num(deviceTotal) + num(licenseTotal) + num(deploymentCost)
-        : "AM tính chi phí";
+    //---Tổng chi phí chưa có vat---
+    const temporaryTotal = num(deviceTotalNoVat) + num(licenseTotalNoVat) + num(deploymentCost)
 
-    console.log("licenseTotal: " + licenseTotal)
-    console.log("costServerTotal: " + costServerTotal)
-    console.log("costServer.vatRate: " + costServer.vatRate)
-    console.log("costServerTotalNoVat: " + costServerTotalNoVat)
-    console.log("devicesTotal: " + deviceTotal)
+    // ---Tổng chi phí vat---
+    const vatPrices = num(deviceTotal - deviceTotalNoVat) + num(costServerTotal - costServerTotalNoVat)
+
+    // --- Tổng cuối cùng có vat---
+    const grandTotal = num(temporaryTotal) + num(vatPrices)
 
     // --- Kết quả ---
     return {
@@ -401,7 +501,9 @@ export class QuotationService {
         costServerTotal,
         costServerTotalNoVat,
         deploymentCost,
+        temporaryTotal,
         grandTotal,
+        vatPrices,
       },
     };
   }
@@ -1282,6 +1384,100 @@ export class QuotationService {
     }
 
     // ============================
+    // Mục D - Chi phí triển khai
+    // ============================
+    sheet.addRow([]);
+
+    const deploymentHeader = sheet.addRow(['', 'D', 'Chi Phí Triển Khai']);
+    deploymentHeader.font = { bold: true, size: 11 };
+    deploymentHeader.alignment = { horizontal: 'left' };
+    sheet.mergeCells(`C${deploymentHeader.number}:D${deploymentHeader.number}`);
+
+    // Header tô màu
+    for (let col = 2; col <= 15; col++) {
+      const cell = sheet.getRow(deploymentHeader.number).getCell(col);
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: '8EA9DB' },
+      };
+      cell.font = { bold: true, size: 11, color: { argb: 'FF000000' } };
+      cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
+    }
+
+    // ============================
+    // Hardcode 3 hàng dữ liệu
+    // ============================
+    let stt = 1;
+
+    // Hàng 1
+    sheet.addRow([
+      '',
+      stt++,
+      'Chi phí cài đặt phần mềm',
+      "- Cài đặt và cấu hình hệ thống phần mềm.\n- Thiết lập máy chủ hoặc môi trường triển khai.\n- Kiểm tra kết nối và phân quyền người dùng.\n- Đảm bảo hệ thống hoạt động ổn định trước khi bàn giao.",
+      1, // quantity
+      '',
+      '',
+      '',
+      '',
+      5000000, // unit price
+      '',
+      5000000, // subtotal
+      '', // price rate (%)
+      5000000, // total amount (sau VAT)
+      '',
+    ]);
+
+    // Hàng 2
+    sheet.addRow([
+      '',
+      stt++,
+      'Chi phí đào tạo',
+      "- Hướng dẫn vận hành và sử dụng hệ thống.\n- Đào tạo nhập liệu, tra cứu và xuất báo cáo.\n- Tổ chức đào tạo trực tuyến hoặc trực tiếp theo yêu cầu khách hàng.",
+      2,
+      '',
+      '',
+      '',
+      '',
+      5000000,
+      '',
+      5000000,
+      '',
+      5000000,
+      '',
+    ]);
+
+    // Hàng 3
+    sheet.addRow([
+      '',
+      stt++,
+      'Chi phí vật tư phụ và nhân công thi công lắp đặt',
+      "- Bao gồm dây cáp, đầu nối, ống luồn, phụ kiện cố định thiết bị.\n- Nhân công thực hiện lắp đặt thiết bị tại hiện trường.\n- Chi phí phụ thuộc vào địa điểm và khối lượng công việc cụ thể.",
+      1,
+      '',
+      '',
+      '',
+      '',
+      quotation.materialCosts,
+      '',
+      quotation.materialCosts,
+      '',
+      quotation.materialCosts,
+      '',
+    ]);
+
+    // Định dạng số cho 3 hàng
+    const lastRowNum = sheet.lastRow!.number;
+    for (let i = deploymentHeader.number + 1; i <= lastRowNum; i++) {
+      const row = sheet.getRow(i);
+      row.getCell(10).numFmt = '#,##0';
+      row.getCell(12).numFmt = '#,##0';
+      row.getCell(13).numFmt = '#,##0';
+      row.getCell(14).numFmt = '#,##0';
+    }
+
+    // ============================
     // Border & style cho toàn bảng
     // ============================
     const totalRows = sheet.rowCount;
@@ -1329,24 +1525,14 @@ export class QuotationService {
       {
         label: 'TỔNG GIÁ TRỊ THÀNH TIỀN CHƯA BAO GỒM VAT',
         valueCol: 12,
-        value:
-          quotation.summary.deviceTotal / 1.08 +
-          quotation.summary.licenseTotal -
-          ((quotation.summary.costServerTotal / 1.08) * 8) / 100
-        // +
-        // quotation.summary.deploymentCost
-        ,
+        value: quotation.summary.temporaryTotal,
         merge: (rowNumber: number) => `B${rowNumber}:K${rowNumber}`,
         height: 30,
       },
       {
         label: 'THUẾ VAT 8%',
         valueCol: 13,
-        value:
-          ((quotation.summary.deviceTotal / 1.08 +
-            quotation.summary.costServerTotal / 1.08) *
-            8) /
-          100,
+        value: quotation.summary.vatPrices,
         merge: (rowNumber: number) => `B${rowNumber}:L${rowNumber}`,
         height: 30,
       },

@@ -13,62 +13,53 @@ export default function CameraCountInput({
   value,
   onValueChange,
 }: CameraCountInputProps) {
-  const [internalValue, setInternalValue] = useState<number | null>(
-    value ?? null
-  );
+  const [inputValue, setInputValue] = useState(value?.toString() ?? "");
 
-  // Đồng bộ với prop value
   useEffect(() => {
-    setInternalValue(value ?? null);
+    setInputValue(value?.toString() ?? "");
   }, [value]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const inputValue = e.target.value;
+    const raw = e.target.value;
 
-    // Nếu rỗng
-    if (inputValue === "") {
-      setInternalValue(null);
-      onValueChange?.(null, "Giá trị không được để trống");
+    // Cho phép xóa rỗng
+    if (raw === "") {
+      setInputValue("");
+      onValueChange?.(null, "Giá trị không hợp lệ");
       return;
     }
 
-    const numericValue = parseInt(inputValue, 10);
+    // Chỉ cho phép nhập số nguyên >= 1
+    if (/^[1-9]\d*$/.test(raw)) {
+      setInputValue(raw);
 
-    // Nếu không phải số
-    if (isNaN(numericValue)) {
-      setInternalValue(null);
-      onValueChange?.(null, "Giá trị phải là số");
-      return;
-    }
+      const num = Number(raw);
 
-    // Nếu < 1
-    if (numericValue < 1) {
-      setInternalValue(numericValue);
-      onValueChange?.(numericValue, "Giá trị phải >= 1");
-      return;
-    }
-
-    // Nếu có schema thì validate
-    if (schema) {
-      const result = schema.safeParse(numericValue);
-      if (!result.success) {
-        setInternalValue(numericValue);
-        onValueChange?.(numericValue, result.error.issues[0].message);
+      if (num < 1) {
+        onValueChange?.(null, "Giá trị phải ≥ 1");
         return;
       }
-    }
 
-    // Hợp lệ
-    setInternalValue(numericValue);
-    onValueChange?.(numericValue, null);
+      // Nếu có schema thì validate
+      if (schema) {
+        const result = schema.safeParse(num);
+        if (!result.success) {
+          onValueChange?.(num, result.error.issues[0].message);
+          return;
+        }
+      }
+      // Giá trị hợp lệ
+      onValueChange?.(num, null);
+    }
   };
 
   const handleBlur = () => {
-    if (internalValue === null || internalValue < 1) {
-      setInternalValue(null);
-      onValueChange?.(null, "Giá trị không được < 1");
+    if (inputValue === "" || Number(inputValue) < 1) {
+      setInputValue("");
+      onValueChange?.(null, "Giá trị không hợp lệ");
     }
   };
+
 
   return (
     <div>
@@ -84,7 +75,7 @@ export default function CameraCountInput({
         type="number"
         min={1}
         placeholder="Nhập số lượng"
-        value={internalValue ?? ""}
+        value={inputValue ?? ""}
         onChange={handleChange}
         onBlur={handleBlur}
         className="border px-2 py-1 rounded w-64 mb-4"

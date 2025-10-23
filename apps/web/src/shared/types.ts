@@ -84,8 +84,10 @@ export interface ShowQuotationProps {
       licenseTotal: number;
       costServerTotal: number;
       costServerTotalNoVat: number;
-      deploymentCost: number | string;
-      grandTotal: number | string;
+      deploymentCost: number;
+      temporaryTotal: number;
+      grandTotal: number;
+      vatPrices: number;
     };
   };
 }

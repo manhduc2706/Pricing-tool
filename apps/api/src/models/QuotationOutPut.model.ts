@@ -23,8 +23,10 @@ export interface OutPutQuotationData {
         licenseTotal: number;
         costServerTotal: number;
         costServerTotalNoVat: number;
-        deploymentCost: number | string; //Chi phí triển khai tổng
-        grandTotal: number | string;
+        deploymentCost: number; //Chi phí triển khai tổng
+        temporaryTotal: number;
+        grandTotal: number;
+        vatPrices: number;
     };
     quotationId: Types.ObjectId;
     // createdAt: Date;
@@ -54,7 +56,9 @@ const OutputQuotationSchema = new Schema<OutPutQuotationData>(
             costServerTotal: { type: Number, required: true },
             costServerTotalNoVat: { type: Number, required: true },
             deploymentCost: { type: Schema.Types.Mixed, required: true },
+            temporaryTotal: { type: Number, required: true },
             grandTotal: { type: Schema.Types.Mixed, required: true },
+            vatPrices: { type: Number, required: true },
         },
         quotationId: {
             type: Schema.Types.ObjectId,

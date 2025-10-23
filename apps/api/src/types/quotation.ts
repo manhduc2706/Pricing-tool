@@ -73,8 +73,10 @@ export interface OutPutQuotationData {
     licenseTotal: number;
     costServerTotal: number;
     costServerTotalNoVat: number;
-    deploymentCost: number | string; //Chi phí triển khai tổng
-    grandTotal: number | string;
+    deploymentCost: number; //Chi phí triển khai tổng
+    temporaryTotal: number;
+    grandTotal: number;
+    vatPrices: number;
   };
   quotationId: Types.ObjectId;
   // createdAt: Date;

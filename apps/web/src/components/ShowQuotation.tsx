@@ -286,14 +286,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               Tạm tính:
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
-              {(
-                updatedQuotation.summary.deviceTotal / 1.08 +
-                updatedQuotation.summary.licenseTotal -
-                Math.round(updatedQuotation.summary.costServerTotal) +
-                updatedQuotation.summary.costServerTotalNoVat
-                // +
-                // updatedQuotation.summary.deploymentCost.toLocaleString("vi-VN")
-              ).toLocaleString("vi-VN")}{" "}
+              {updatedQuotation.summary.temporaryTotal.toLocaleString("vi-VN")}{" "}
               VND
             </td>
           </tr>
@@ -302,12 +295,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               VAT (8%):
             </td>
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
-              {(
-                ((updatedQuotation.summary.deviceTotal / 1.08 +
-                  updatedQuotation.summary.costServerTotal) *
-                  8) /
-                100
-              ).toLocaleString("vi-VN")}{" "}
+              {updatedQuotation.summary.vatPrices.toLocaleString("vi-VN")}{" "}
               VND
             </td>
           </tr>

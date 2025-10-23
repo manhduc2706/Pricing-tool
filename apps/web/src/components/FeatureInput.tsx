@@ -72,7 +72,7 @@ export default function FeatureInput({ schema, onValueChange }: FeatureInputProp
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-3 gap-4">
       {featureData.map((item, index) => {
         const isChecked = item.pointCount > 0;
 
@@ -116,38 +116,36 @@ export default function FeatureInput({ schema, onValueChange }: FeatureInputProp
             </label>
 
             {/* Floating label input số lượng */}
-            {isChecked && (
-              <div className="relative mt-3 w-full">
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  value={item.pointCount > 0 ? item.pointCount : ""}
-                  onChange={(e) => handleFeatureChange(item.feature, e.target.value)}
-                  placeholder="Nhập số lượng vị trí"
-                  className={`peer block w-full rounded-md border px-3 pt-5 pb-2 appearance-none focus:outline-none focus:ring-1 ${item.error
+            <div className="relative mt-3 w-full">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                value={item.pointCount > 0 ? item.pointCount : ""}
+                onChange={(e) => handleFeatureChange(item.feature, e.target.value)}
+                placeholder=" " 
+                className={`peer block w-full rounded-md border px-3 pt-5 pb-2 appearance-none focus:outline-none focus:ring-1 ${item.error
                     ? "border-red-500 focus:ring-red-500"
                     : "border-gray-300 focus:ring-[#0F4FAF]"
-                    }`}
-                />
+                  }`}
+              />
 
-                {/* Floating label */}
-                <label
-                  className={`absolute left-3 top-2 text-gray-500 text-sm transition-all
-                    peer-placeholder-shown:top-5 peer-placeholder-shown:text-gray-400 peer-placeholder-shown:text-base
-                    peer-focus:top-2 peer-focus:text-xs peer-focus:text-[#0F4FAF]
-                  `}
-                >
-                  Nhập số lượng vị trí
-                </label>
+              {/* Floating label*/}
+              <label
+                className={`absolute left-3 bg-white px-1 text-gray-500 text-sm transition-all duration-200 pointer-events-none
+      peer-placeholder-shown:top-3.5 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400
+      peer-focus:-top-2 peer-focus:text-xs peer-focus:text-[#0F4FAF]
+      ${item.pointCount > 0 ? "-top-2 text-xs text-[#0F4FAF]" : ""}
+    `}
+              >
+                Nhập số vị trí
+              </label>
 
-                {item.error && (
-                  <span className="text-red-500 text-sm mt-1 block">
-                    {item.error}
-                  </span>
-                )}
-              </div>
-            )}
+              {item.error && (
+                <span className="text-red-500 text-sm mt-1 block">{item.error}</span>
+              )}
+            </div>
+
           </div>
         );
       })}

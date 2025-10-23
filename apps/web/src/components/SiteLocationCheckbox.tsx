@@ -1,13 +1,18 @@
+import { ZodType } from "zod";
 import IconLocation from "./ui/iconLocation";
 
 interface SiteLocationCheckboxProps {
     selectedSiteLocation?: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null;
     onChange: (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác") => void;
+    onValueChange: (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác", errors: string[]) => void;
+    schema?: ZodType<any>;
 }
 
 export default function SiteLocationCheckbox({
     selectedSiteLocation,
     onChange,
+    schema,
+    onValueChange,
 }: SiteLocationCheckboxProps) {
     const options = [
         {
@@ -30,6 +35,11 @@ export default function SiteLocationCheckbox({
         },
     ];
 
+    const handleSelect = (optionId: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác") => {
+        onChange(optionId),
+            onValueChange(optionId, [])
+    }
+
     return (
         <div className="space-y-3">
             <h3 className="block font-medium text-gray-700 mb-4">
@@ -48,7 +58,7 @@ export default function SiteLocationCheckbox({
                                 type="radio"
                                 name="siteLocation"
                                 checked={isChecked}
-                                onChange={() => onChange(option.id as "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác")}
+                                onChange={() => handleSelect(option.id as "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác")}
                                 className="hidden"
                             />
                             <div className="flex items-center space-x-3">
