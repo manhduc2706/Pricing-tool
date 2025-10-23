@@ -63,6 +63,7 @@ export interface OutPutQuotationData {
   cameraCount: number | null;
   iconKey: string;
   screenOptions?: IDevice[],
+  switchOptions?: IDevice[],
   costServers: CostServerResponse[];
   devices: QuotationItemResponse[];
   licenses: QuotationItemResponse[];
@@ -71,6 +72,7 @@ export interface OutPutQuotationData {
     deviceTotal: number;
     licenseTotal: number;
     costServerTotal: number;
+    costServerTotalNoVat: number;
     deploymentCost: number | string; //Chi phí triển khai tổng
     grandTotal: number | string;
   };

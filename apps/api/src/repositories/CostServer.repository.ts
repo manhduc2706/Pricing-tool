@@ -7,7 +7,7 @@ export interface CreateCostServer {
   vatRate: number;
   description?: string;
   quantity?: number;
-  fileId: Types.ObjectId;
+  fileId?: Types.ObjectId;
   note: string | null;
 }
 
@@ -70,7 +70,7 @@ export class CostServerRepository {
       vatRate: data.vatRate,
       description: data.description,
       totalAmount,
-      fileId: data.fileId,
+      fileId: data.fileId || null,
       note: data.note || null,
     });
 

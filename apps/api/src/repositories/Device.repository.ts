@@ -31,7 +31,7 @@ export class DeviceRepository {
     const existing = await DeviceModel.findOne({
       categoryId: data.categoryId,
       itemDetailId: data.itemDetailId,
-      selectedFeatures: data.selectedFeatures,
+      selectedFeatures: data.selectedFeatures ?? [],
       deviceType: data.deviceType,
     });
 

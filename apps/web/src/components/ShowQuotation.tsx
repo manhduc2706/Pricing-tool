@@ -1,23 +1,41 @@
 import { useEffect, useState } from "react";
 import { SelectedFeature, ShowQuotationProps } from "../types";
 import axios from "axios";
+import { DownloadExcelButton } from "./DownloadExcel";
 
 export default function ShowQuotation({ quotation }: ShowQuotationProps) {
   const [selectedScreenId, setSelectedScreenId] = useState(
     quotation.devices.find(d => d.deviceType === "Màn hình")?.itemDetailId ?? ""
   );
 
+  const [selectedSwitchId, setSelectedSwitchId] = useState(
+    quotation.devices.find(d => d.deviceType === "Switch PoE")?.itemDetailId ?? ""
+  );
+
   const [updatedQuotation, setUpdatedQuotation] = useState(quotation);
   const [loading, setLoading] = useState(false);
+  const [excelResult, setExcelResult] = useState<any>(null);
+
 
   useEffect(() => {
     setUpdatedQuotation(quotation);
 
     const currentScreen = quotation.devices.find(d => d.deviceType === "Màn hình");
-    if (currentScreen) {
-      setSelectedScreenId(currentScreen.itemDetailId);
-    }
+    if (currentScreen) setSelectedScreenId(currentScreen.itemDetailId);
+    console.log("Quotation prop changed:", quotation);
   }, [quotation]);
+
+  useEffect(() => {
+    setUpdatedQuotation(quotation);
+
+    const currentSwitch = quotation.devices.find(d => d.deviceType === "Switch PoE");
+    if (currentSwitch) setSelectedSwitchId(currentSwitch.itemDetailId);
+    console.log("Quotation prop changed:", quotation);
+  }, [quotation]);
+
+  useEffect(() => {
+    console.log("updatedQuotation changed:", updatedQuotation);
+  }, [updatedQuotation]);
 
 
   //Hàm xử lý chọn màn hình và gọi API
@@ -25,19 +43,42 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
     setSelectedScreenId(screenId);
     setLoading(true);
 
-    debugger;
     try {
-      const res = await axios.patch(
-        `/api/quotations/${quotation._id}/update`,
-        { type: "device", updatedItemId: screenId }
-      );
+      const res = await axios.patch(`/api/quotations/${quotation._id}/update`, {
+        type: "device",
+        updatedItemId: screenId,
+      });
 
-      if (res.data?.updatedQuotation) {
-        setUpdatedQuotation(res.data.updatedQuotation);
+      if (res.data.data) {
+        setUpdatedQuotation(res.data.data);
       }
+      setExcelResult(quotation)
     } catch (error) {
       console.error("Lỗi khi cập nhật màn hình:", error);
       alert("Không thể cập nhật màn hình. Vui lòng thử lại!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  //Hàm xử lý chọn switch
+  const handleSwitchChange = async (switchId: string) => {
+    setSelectedSwitchId(switchId);
+    setLoading(true);
+
+    try {
+      const res = await axios.patch(`/api/quotations/${quotation._id}/update`, {
+        type: "device",
+        updatedItemId: switchId,
+      });
+
+      if (res.data.data) {
+        setUpdatedQuotation(res.data.data);
+      }
+      setExcelResult(quotation)
+    } catch (error) {
+      console.error("Lỗi khi cập nhật switch:", error);
+      alert("Không thể cập nhật switch. Vui lòng thử lại!");
     } finally {
       setLoading(false);
     }
@@ -184,9 +225,23 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
                         </option>
                       ))}
                     </select>
+                  ) : item.sourceType === "device" && item.deviceType === "Switch PoE" ? (
+                    <select
+                      value={selectedSwitchId}
+                      onChange={(e) => handleSwitchChange(e.target.value)}
+                      className="border rounded px-2 py-1"
+                      disabled={loading}
+                    >
+                      {updatedQuotation.switchOptions.map((sw) => (
+                        <option key={sw._id} value={sw._id}>
+                          {sw.itemDetailId?.name ?? ""}
+                        </option>
+                      ))}
+                    </select>
                   ) : (
                     <div style={{ whiteSpace: "pre-line" }}>{item.name}</div>
                   )}
+
                 </td>
                 <td className={`px-3 py-6 ${borderClass}`}>
                   {item.quantity.toLocaleString("vi-VN")}
@@ -234,9 +289,10 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               {(
                 updatedQuotation.summary.deviceTotal / 1.08 +
                 updatedQuotation.summary.licenseTotal -
-                ((updatedQuotation.summary.costServerTotal / 1.08) * 8) / 100
+                Math.round(updatedQuotation.summary.costServerTotal) +
+                updatedQuotation.summary.costServerTotalNoVat
                 // +
-                // quotation.summary.deploymentCost
+                // updatedQuotation.summary.deploymentCost.toLocaleString("vi-VN")
               ).toLocaleString("vi-VN")}{" "}
               VND
             </td>
@@ -248,7 +304,7 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
             <td className="px-3 py-2 divide-y divide-gray-300 text-right text-lg font-semibold text-gray-900">
               {(
                 ((updatedQuotation.summary.deviceTotal / 1.08 +
-                  updatedQuotation.summary.costServerTotal / 1.08) *
+                  updatedQuotation.summary.costServerTotal) *
                   8) /
                 100
               ).toLocaleString("vi-VN")}{" "}
@@ -270,11 +326,12 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
               {updatedQuotation.summary.grandTotal.toLocaleString("vi-VN")} VND
             </td>
           </tr>
+
         </tbody>
       </table>
-      {/* <div className="flex justify-end">
-          <DownloadExcelButton quotationData={quotation}/>
-        </div> */}
+      <div className="flex justify-end">
+        <DownloadExcelButton _id={quotation._id.toString()} />
+      </div>
     </div>
   );
 }

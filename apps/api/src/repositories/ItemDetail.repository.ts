@@ -13,6 +13,7 @@ export interface CreateItemDetailData {
   developmentType: "Cloud" | "OnPremise";
   fileId: Types.ObjectId | null;
   note: string | null;
+  type: "device" | "license" | "server";
 }
 
 export class ItemDetailRepository {
@@ -33,6 +34,7 @@ export class ItemDetailRepository {
       quantity: data.quantity, //Số lượng mua;
       fileId: data.fileId || null,
       note: data.note || null,
+      type: data.type
     });
     return await newItemDetail.save();
   }

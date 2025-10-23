@@ -43,16 +43,21 @@ export class QuotationService {
 
     const allDevices = await this.quotationRepository.findDevicesByCategory(data.categoryId.toString(), itemDetailIds);
     const screenDevices = allDevices.filter((d) => d.deviceType === "Màn hình");
+    const switchDevices = allDevices.filter((d) => d.deviceType === "Switch PoE");
     const firstScreenDevice = screenDevices.length > 0 ? screenDevices[0] : null;
-    const otherDevices = allDevices.filter((d) => d.deviceType !== "Màn hình");
-    const devices = firstScreenDevice ? [firstScreenDevice, ...otherDevices] : otherDevices;
-
+    const firstSwitchDevice = switchDevices.length > 0 ? switchDevices[0] : null;
+    const otherDevices = allDevices.filter((d) => d.deviceType !== "Màn hình" && d.deviceType !== "Switch PoE");
+    const devices = [
+      ...(firstScreenDevice ? [firstScreenDevice] : []),
+      ...(firstSwitchDevice ? [firstSwitchDevice] : []),
+      ...otherDevices,
+    ];
     const licenses = await this.getLicenses(data, isSecurity, itemDetailIds);
     const costServerIds = licenses.map((l: any) => l.costServerId).filter((id: any) => id);
     const costServers = await this.quotationRepository.findCostServersByIds(costServerIds);
     const costServer = costServers[0];
 
-    return { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer, num };
+    return { isSecurity, allDevices, screenDevices, switchDevices, firstSwitchDevice, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer, num };
   }
 
   async createQuotation(data: CreateQuotationData): Promise<OutPutQuotationData> {
@@ -60,7 +65,7 @@ export class QuotationService {
       const num = this.num;
 
       // 1) Lấy dữ liệu
-      const { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
+      const { isSecurity, allDevices, screenDevices, switchDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
 
       // 2) Gọi tính toán
       const totals = this.calculateTotals(data, devices, licenses, costServer, isSecurity);
@@ -175,6 +180,7 @@ export class QuotationService {
         cameraCount: data.cameraCount ?? null,
         selectedFeatures: data.selectedFeatures ?? [],
         screenOptions: screenDevices,
+        switchOptions: switchDevices,
         devices: deviceResponses,
         licenses: licenseResponses,
         costServers: costServerResponses,
@@ -293,7 +299,7 @@ export class QuotationService {
           const perUser =
             num(id.unitPrice) +
             num(costServer?.unitPrice ?? 0) * (1 + num(id.vatRate / 100));
-          return acc + perUser * num(data.userCount);
+          return acc + perUser;
         }, 0);
       }
     } else {
@@ -361,31 +367,39 @@ export class QuotationService {
         ? num(softwareInstallationCost) + num(trainingCost) + num(materialCosts)
         : "AM tính chi phí";
 
-    // --- Tổng chi phí server ---
-    const costServerTotal = costServer
+    // --- Tổng chi phí server có vat ---
+    const costServerTotal = Math.round(costServer
       ? num(costServer.unitPrice) * (1 + num(costServer.vatRate) / 100)
-      : 0;
+      : 0);
 
-    // --- Tổng cuối cùng ---
+    // --- Tổng chi phí server chưa vat ---
+    const costServerTotalNoVat = Math.round(costServer
+      ? num(costServer.unitPrice)
+      : 0);
+
+    // --- Tổng cuối cùng có vat---
     const grandTotal =
       typeof deploymentCost === "number"
         ? num(deviceTotal) + num(licenseTotal) + num(deploymentCost)
         : "AM tính chi phí";
 
+    console.log("licenseTotal: " + licenseTotal)
+    console.log("costServerTotal: " + costServerTotal)
+    console.log("costServer.vatRate: " + costServer.vatRate)
+    console.log("costServerTotalNoVat: " + costServerTotalNoVat)
+    console.log("devicesTotal: " + deviceTotal)
+
     // --- Kết quả ---
     return {
-      deviceTotal,
-      licenseTotal,
-      costServerTotal,
       materialCosts,
       softwareInstallationCost,
       trainingCost,
       deploymentCost,
-      grandTotal,
       summary: {
         deviceTotal,
         licenseTotal,
         costServerTotal,
+        costServerTotalNoVat,
         deploymentCost,
         grandTotal,
       },
@@ -417,7 +431,7 @@ export class QuotationService {
       siteCount: quotation.siteCount,
       categoryId: quotation.categoryId,
     } as CreateQuotationData;
-    let { isSecurity, allDevices, screenDevices, firstScreenDevice, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
+    let { isSecurity, allDevices, screenDevices, switchDevices, otherDevices, devices, licenses, costServers, costServer } = await this.prepareQuotationData(data);
 
 
     // --- Cập nhật item tương ứng ---
@@ -425,7 +439,67 @@ export class QuotationService {
       const newDevice = await this.quotationRepository.findDeviceById(updatedItemId);
       if (!newDevice) throw new Error("Không tìm thấy thiết bị cần cập nhật");
 
-      devices = newDevice ? [newDevice, ...otherDevices] : otherDevices;
+      // Lấy danh sách thiết bị hiện có trong outputQuotation
+      const currentOutputDevices = outputQuotation.devices || [];
+
+      // Nếu thiết bị thay thế là màn hình
+      if (newDevice.deviceType === "Màn hình") {
+        let firstScreenDevice = newDevice;
+
+        const switchDeviceId = currentOutputDevices.find(
+          (d: any) => d.deviceType === "Switch PoE"
+        )?.itemDetailId;
+
+        let firstSwitchDeviceResult = switchDeviceId
+          ? await this.quotationRepository.findDevicesByItemDetail(switchDeviceId.toString())
+          : null;
+
+        let firstSwitchDevice = firstSwitchDeviceResult && firstSwitchDeviceResult.length > 0
+          ? firstSwitchDeviceResult[0]
+          : null;
+
+        devices = [
+          ...(firstScreenDevice ? [firstScreenDevice] : []),
+          ...(firstSwitchDevice ? [firstSwitchDevice] : []),
+          ...otherDevices,
+        ];
+      }
+      // Nếu thiết bị thay thế là Switch PoE
+      else if (newDevice.deviceType === "Switch PoE") {
+        let firstSwitchDevice = newDevice;
+
+        const screenDeviceId = currentOutputDevices.find(
+          (d: any) => d.deviceType === "Màn hình"
+        )?.itemDetailId;
+
+        console.log(screenDeviceId)
+
+        let firstScreenDeviceResult = screenDeviceId
+          ? await this.quotationRepository.findDevicesByItemDetail(screenDeviceId.toString())
+          : null;
+
+        let firstScreenDevice = firstScreenDeviceResult && firstScreenDeviceResult.length > 0
+          ? firstScreenDeviceResult[0]
+          : null;
+
+        devices = [
+          ...(firstScreenDevice ? [firstScreenDevice] : []),
+          ...(firstSwitchDevice ? [firstSwitchDevice] : []),
+          ...otherDevices,
+        ];
+      }
+      // Nếu là thiết bị khác
+      else {
+        const sameTypeIndex = otherDevices.findIndex(
+          (d) => d.deviceType === newDevice.deviceType
+        );
+
+        if (sameTypeIndex !== -1) {
+          otherDevices[sameTypeIndex] = newDevice;
+        } else {
+          otherDevices.push(newDevice);
+        }
+      }
     }
 
     // --- Tính lại tổng ---
@@ -469,18 +543,20 @@ export class QuotationService {
     );
 
     // --- Lưu & trả kết quả ---
-    await this.quotationRepository.update(id, {
+    const newOutPutQuotation = await this.quotationRepository.update(id, {
       devices: deviceResponses,
-      summary: totals
+      summary: totals.summary,
     });
-
-    const refreshedQuotation = await this.quotationRepository.findByIdOutPut(id);
-    return refreshedQuotation;
+    return newOutPutQuotation;
   }
 
 
-  async downloadExcel(input: CreateQuotationData): Promise<Buffer> {
-    const quotation = await this.createQuotation(input);
+  async downloadExcel(id: string): Promise<Buffer> {
+    const quotation = await this.quotationRepository.findByIdOutPut(id);
+    if (!quotation) {
+      throw new Error("Không tìm thấy báo giá output");
+    }
+    console.log(quotation)
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Quotation');
 
@@ -646,7 +722,7 @@ export class QuotationService {
 
     // Thông tin liên hệ 2
     const labels = [
-      { left: 'Bên báo giá:', right: ` C-CAM ${input.deploymentType}` },
+      { left: 'Bên báo giá:', right: ` C-CAM ${quotation.deploymentType}` },
       {
         left: 'Tên công ty:',
         right: ' TỔNG CÔNG TY CÔNG NGHỆ & GIẢI PHÁP CMC',

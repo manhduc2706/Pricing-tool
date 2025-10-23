@@ -13,6 +13,7 @@ export interface OutPutQuotationData {
     cameraCount: number | null;
     iconKey: string;
     screenOptions?: IDevice[],
+    switchOptions?: IDevice[],
     costServers: CostServerResponse[];
     devices: QuotationItemResponse[];
     licenses: QuotationItemResponse[];
@@ -21,6 +22,7 @@ export interface OutPutQuotationData {
         deviceTotal: number;
         licenseTotal: number;
         costServerTotal: number;
+        costServerTotalNoVat: number;
         deploymentCost: number | string; //Chi phí triển khai tổng
         grandTotal: number | string;
     };
@@ -40,6 +42,7 @@ const OutputQuotationSchema = new Schema<OutPutQuotationData>(
         iconKey: { type: String, required: true },
 
         screenOptions: { type: [Schema.Types.Mixed], default: [] },
+        switchOptions: { type: [Schema.Types.Mixed], default: [] },
         costServers: { type: [Schema.Types.Mixed], default: [], required: true } as any,
         devices: { type: [Schema.Types.Mixed], default: [], required: true } as any,
         licenses: { type: [Schema.Types.Mixed], default: [], required: true } as any,
@@ -49,6 +52,7 @@ const OutputQuotationSchema = new Schema<OutPutQuotationData>(
             deviceTotal: { type: Number, required: true },
             licenseTotal: { type: Number, required: true },
             costServerTotal: { type: Number, required: true },
+            costServerTotalNoVat: { type: Number, required: true },
             deploymentCost: { type: Schema.Types.Mixed, required: true },
             grandTotal: { type: Schema.Types.Mixed, required: true },
         },

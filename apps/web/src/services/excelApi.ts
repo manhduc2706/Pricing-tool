@@ -1,11 +1,10 @@
-import { CreateQuotation } from "../types";
+import { ShowQuotationProps } from "../types";
 import api from "./api";
 
-export const excelApi = async (data: CreateQuotation) => {
+export const excelApi = async (_id: string) => {
   try {
     const requestData = {
-      ...data,
-      selectedFeatures: data.selectedFeatures ?? null,
+      _id
     };
 
     const response = await api.post("/quotations/createExcel", requestData, {

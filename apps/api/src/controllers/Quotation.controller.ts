@@ -85,17 +85,8 @@ export class QuotationController {
   async downloadExcelForm(req: Request, res: Response): Promise<void> {
     try {
       // Map request data từ FE
-      const requestData = {
-        siteCount: req.body.siteCount,
-        siteLocation: req.body.siteLocation,
-        deploymentType: req.body.deploymentType,
-        categoryId: new Types.ObjectId(req.body._id), // FE gửi _id là categoryId
-        userCount: req.body.userCount,
-        pointCount: req.body.pointCount,
-        cameraCount: req.body.cameraCount,
-        selectedFeatures: req.body.selectedFeatures || [], // Nhận selectedFeatures
-        iconKey: req.body.iconKey, // Nhận iconKey để xác định loại service
-      };
+      const requestData = req.body;
+      console.log(requestData)
 
       const buffer = await this.quotationService.downloadExcel(requestData);
 

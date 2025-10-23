@@ -37,6 +37,17 @@ export class QuotationRepository {
       .populate("categoryId");
   }
 
+  //Lọc device theo itemdetail
+  async findDevicesByItemDetail(itemDetailId: string) {
+    const device = await DeviceModel.find({
+      itemDetailId: itemDetailId,
+    })
+      .populate("itemDetailId")
+      .populate("categoryId");
+    if (!device) throw new Error(`Không tìm thấy thiết bị với id: ${itemDetailId}`);
+    return device;
+  }
+
   //Lọc license theo itemdetail và category
   async findLicensesByQuery(query: any) {
     return LicenseModel.find(query)
@@ -51,6 +62,17 @@ export class QuotationRepository {
       .populate("categoryId")
     if (!device) throw new Error(`Không tìm thấy thiết bị với id: ${id}`);
     return device;
+  }
+
+  //Tìm output quotation dựa trên quotationId
+  async findOutPutQuotation(quotationId: string) {
+    const outputQuotation = await OutputQuotationModel.findOne({
+      quotationId: quotationId,
+    })
+      .populate("itemDetailId")
+      .populate("categoryId")
+    if (!outputQuotation) throw new Error(`Không tìm thấy quotation với id: ${quotationId}`)
+    return outputQuotation;
   }
 
   async findDevices() {
@@ -88,27 +110,42 @@ export class QuotationRepository {
   }
 
   //Cập nhập báo giá theo id
-  async update(id: string | Types.ObjectId, data: any) {
+  async update(id: string, data: any) {
     await OutputQuotationModel.findByIdAndUpdate(id, { $set: data });
-    return OutputQuotationModel.findById(id)
+    const refreshedQuotation = await OutputQuotationModel.findById(id)
       .populate({
         path: "screenOptions",
         populate: [
-          { path: "categoryId" },
-          { path: "itemDetailId" },
+          { path: "itemDetailId", model: "ItemDetail" },
+          { path: "categoryId", model: "Category" },
+        ]
+      })
+      .populate({
+        path: "switchOptions",
+        populate: [
+          { path: "itemDetailId", model: "ItemDetail" },
+          { path: "categoryId", model: "Category" },
+        ]
+      })
+      .populate({
+        path: "devices",
+        populate: [
+          { path: "itemDetailId", model: "ItemDetail" },
+          { path: "categoryId", model: "Category" },
         ],
       })
       .populate({
-        path: "devices.itemDetailId",
-        select: "name vendor origin unitPrice description note"
+        path: "licenses",
+        populate: { path: "itemDetailId", model: "ItemDetail" },
       })
       .populate({
-        path: "licenses.itemDetailId",
-        select: "name vendor origin unitPrice description note"
-      });
+        path: "costServers",
+        populate: { path: "itemDetailId", model: "ItemDetail" },
+      })
+      .populate("quotationId");
+
+    return refreshedQuotation;
   }
-
-
 
   async findByCategoryId(categoryId: string) {
     return await QuotationModel.find({ categoryId });
@@ -121,6 +158,6 @@ export class QuotationRepository {
 
   //Tìm theo id của output quotation
   async findByIdOutPut(id: string) {
-    return await OutputQuotationModel.findById(id);
+    return await OutputQuotationModel.findById(id)
   }
 }

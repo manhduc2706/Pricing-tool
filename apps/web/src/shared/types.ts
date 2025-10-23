@@ -40,6 +40,7 @@ export interface ShowQuotationProps {
     softwareInstallationCost: number,
     trainingCost: number,
     screenOptions: IDevice[];
+    switchOptions: IDevice[];
     devices: Array<{
       _id: string;
       name: string;
@@ -82,6 +83,7 @@ export interface ShowQuotationProps {
       deviceTotal: number;
       licenseTotal: number;
       costServerTotal: number;
+      costServerTotalNoVat: number;
       deploymentCost: number | string;
       grandTotal: number | string;
     };

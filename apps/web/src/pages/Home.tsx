@@ -16,6 +16,7 @@ import z from "zod";
 import { WarningBox } from "../components/ui/WarningBox";
 import SiteInput from "../components/SiteInput";
 import SiteLocationCheckbox from "../components/SiteLocationCheckbox";
+import ScrollToTopButton from "../components/ScrollToTopButton";
 
 // Schema validate form
 const schema = z.object({
@@ -416,8 +417,8 @@ export default function Home() {
         </div>
 
         {successChecked && (
-          <div className="fixed bottom-5 right-5 flex items-end px-4 py-6">
-            <div className="w-120 shadow-lg rounded bg-green-400 border-l-4 border-green-700 text-white relative">
+          <div className="fixed bottom-5 right-12 flex items-end px-4 py-6">
+            <div className="w-120 shadow-lg rounded bg-green-500 border-l-4 border-green-700 text-white relative">
               <div className="p-3">
                 <div className="flex items-start">
                   <div className="ml-2 flex-1 pt-0.5">
@@ -449,7 +450,7 @@ export default function Home() {
               </div>
 
               {/* Thanh progress */}
-              <div className="h-1 bg-green-300">
+              <div className="h-1 bg-green-500">
                 <div
                   className="h-1 bg-green-700 transition-all duration-100"
                   style={{ width: `${progress}%` }}
@@ -483,12 +484,11 @@ export default function Home() {
             </div>
             <div className="bg-white">
               <ShowQuotation quotation={quotationResult} />
-              <div className="flex justify-end p-4 mb-4">
-                <DownloadExcelButton quotationData={excelResult} />
-              </div>
             </div>
           </div>
         )}
+
+        <ScrollToTopButton />
       </div>
     </div>
   );
