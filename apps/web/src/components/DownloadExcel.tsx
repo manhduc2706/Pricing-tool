@@ -1,5 +1,4 @@
 import { excelApi } from "../services/excelApi";
-import { ShowQuotationProps } from "../types";
 import IconExcel from "./ui/iconExcel";
 
 export const DownloadExcelButton = ({ _id }: { _id: string }) => {

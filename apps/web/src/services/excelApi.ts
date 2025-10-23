@@ -1,4 +1,3 @@
-import { ShowQuotationProps } from "../types";
 import api from "./api";
 
 export const excelApi = async (_id: string) => {

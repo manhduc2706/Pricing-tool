@@ -1,17 +1,14 @@
-import { ZodType } from "zod";
 import IconLocation from "./ui/iconLocation";
 
 interface SiteLocationCheckboxProps {
     selectedSiteLocation?: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác" | null;
     onChange: (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác") => void;
     onValueChange: (selected: "TP Hà Nội" | "TP Hồ Chí Minh" | "Tỉnh khác", errors: string[]) => void;
-    schema?: ZodType<any>;
 }
 
 export default function SiteLocationCheckbox({
     selectedSiteLocation,
     onChange,
-    schema,
     onValueChange,
 }: SiteLocationCheckboxProps) {
     const options = [

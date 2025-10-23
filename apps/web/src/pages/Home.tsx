@@ -11,7 +11,6 @@ import FeatureInput from "../components/FeatureInput";
 import IconD from "../components/ui/iconD";
 import IconCalculator from "../components/ui/iconCalculator";
 import CameraCountInput from "../components/CameraCount";
-import { DownloadExcelButton } from "../components/DownloadExcel";
 import z from "zod";
 import { WarningBox } from "../components/ui/WarningBox";
 import SiteInput from "../components/SiteInput";
@@ -39,13 +38,11 @@ export default function Home() {
   const [pointCount, setPointCount] = useState<number | null>(null);
   const [cameraCount, setCameraCount] = useState<number | null>(null);
   const [quotationResult, setQuotationResult] = useState<any>(null);
-  const [excelResult, setExcelResult] = useState<any>(null);
   const [selectedFeatures, setSelectedFeatures] = useState<SelectedFeature[]>(
     []
   );
   // Thêm state cho thông báo chung
   const [formMessage, setFormMessage] = useState<string>("");
-  const [errors, setErrors] = useState<{ [key: string]: string | null }>({});
   const [showErrors, setShowErrors] = useState(false); // kiểm soát hiển thị
   const [quotationCreated, setQuotationCreated] = useState(false);
   const [successChecked, setSuccessChecked] = useState(false);
@@ -182,7 +179,6 @@ export default function Home() {
         ...quotationData,
         pointCount: totalPointCount!,
       });
-      setExcelResult(quotationData);
       setQuotationResult(result);
       // Ẩn lỗi sau khi submit
       setQuotationCreated(true);
@@ -258,7 +254,6 @@ export default function Home() {
       }
     }
 
-    setErrors(prev => ({ ...prev, [name]: error }));
     setShowErrors(true);
   };
 

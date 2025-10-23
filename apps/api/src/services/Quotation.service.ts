@@ -269,7 +269,6 @@ export class QuotationService {
 
         //Tổng giá thiết bị chưa bao gồm vat
         deviceTotalNoVat = devices.reduce((acc: number, device: any) => {
-          const id = device.itemDetailId || {};
           const quantity =
             data.iconKey === "securityAlert"
               ? device.deviceType === "AI Box"
@@ -277,7 +276,7 @@ export class QuotationService {
                 (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
                 : num(data.cameraCount)
               : num(data.pointCount);
-          return acc + num(device.id.unitPrice) * num(quantity);
+          return acc + num(device.itemDetailId.unitPrice) * num(quantity);
         }, 0);
 
         //Tổng giá license + server bao gồm vat
@@ -376,7 +375,6 @@ export class QuotationService {
 
         //Tổng thiết bị chưa bao gồm vat
         deviceTotalNoVat = devices.reduce((acc: number, device: any) => {
-          const id = device.itemDetailId || {};
           const quantity =
             data.iconKey === "securityAlert"
               ? device.deviceType === "AI Box"
@@ -384,7 +382,7 @@ export class QuotationService {
                 (num(data.cameraCount) % 2 !== 0 ? 1 : 0)
                 : num(data.cameraCount)
               : num(data.pointCount);
-          return acc + num(device.id.unitPrice) * num(quantity);
+          return acc + num(device.itemDetailId.unitPrice) * num(quantity);
         }, 0);
 
         //Tổng license + server bao gồm vat

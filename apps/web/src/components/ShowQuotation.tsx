@@ -14,7 +14,6 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
 
   const [updatedQuotation, setUpdatedQuotation] = useState(quotation);
   const [loading, setLoading] = useState(false);
-  const [excelResult, setExcelResult] = useState<any>(null);
 
 
   useEffect(() => {
@@ -52,7 +51,6 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
       if (res.data.data) {
         setUpdatedQuotation(res.data.data);
       }
-      setExcelResult(quotation)
     } catch (error) {
       console.error("Lỗi khi cập nhật màn hình:", error);
       alert("Không thể cập nhật màn hình. Vui lòng thử lại!");
@@ -75,7 +73,6 @@ export default function ShowQuotation({ quotation }: ShowQuotationProps) {
       if (res.data.data) {
         setUpdatedQuotation(res.data.data);
       }
-      setExcelResult(quotation)
     } catch (error) {
       console.error("Lỗi khi cập nhật switch:", error);
       alert("Không thể cập nhật switch. Vui lòng thử lại!");

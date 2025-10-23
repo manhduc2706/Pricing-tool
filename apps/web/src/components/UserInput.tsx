@@ -16,7 +16,6 @@ export default function UserInput({
   schema,
   onValueChange,
 }: UserInputProps) {
-  const [value, setValue] = useState<number | null>(null); // numeric value
   const [selected, setSelected] = useState<string>(""); // string bound to select
   const [showWarningOnPremise, setShowWarningOnPremise] = useState(false);
   const [showWarningOnCloud, setShowWarningOnCloud] = useState(false);
@@ -32,7 +31,6 @@ export default function UserInput({
 
     // special OnPremise >5000
     if (raw === ">5000") {
-      setValue(null);
       setShowWarningOnPremise(true);
       setShowWarningOnCloud(false);
       return;
@@ -42,7 +40,6 @@ export default function UserInput({
 
     // special Cloud >2000
     if (raw === ">2000") {
-      setValue(null);
       setShowWarningOnCloud(true);
       setShowWarningOnPremise(false);
       return;
@@ -53,7 +50,6 @@ export default function UserInput({
     // parse numeric option
     const parsed = parseInt(raw, 10);
     if (!isNaN(parsed)) {
-      setValue(parsed);
 
       // validate numeric with zod
       const result = schema.safeParse(parsed);
@@ -64,7 +60,6 @@ export default function UserInput({
     }
 
     // fallback: invalid selection (shouldn't happen)
-    setValue(null);
     onValueChange?.(null, "Giá trị không hợp lệ");
   };
 
